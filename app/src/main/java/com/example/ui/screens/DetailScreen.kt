@@ -25,13 +25,15 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.data.model.Movie
+import com.example.data.model.EpgProgram
 import com.example.ui.theme.*
 
 @Composable
 fun DetailScreen(
     movie: Movie,
     onBack: () -> Unit,
-    onPlay: (Movie) -> Unit
+    onPlay: (Movie) -> Unit,
+    epgPrograms: List<EpgProgram> = emptyList()
 ) {
     val scrollState = rememberScrollState()
 
@@ -250,6 +252,22 @@ fun DetailScreen(
                         color = TextSecondary,
                         lineHeight = 22.sp
                     )
+
+                    if (movie.isLive && epgPrograms.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(20.dp))
+                        Text("Programación", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = TextPrimary)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        epgPrograms.take(8).forEach { program ->
+                            val accent = if (program.now) NetflixRed else DarkSurfaceVariant
+                            Surface(color = accent.copy(alpha = if (program.now) 0.22f else 1f), shape = RoundedCornerShape(8.dp), modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp)) {
+                                Column(modifier = Modifier.padding(10.dp)) {
+                                    Text(program.title, color = TextPrimary, fontWeight = if (program.now) FontWeight.Bold else FontWeight.Medium)
+                                    if (program.description.isNotBlank()) Text(program.description, color = TextMuted, style = MaterialTheme.typography.bodySmall, maxLines = 2)
+                                    Text(if (program.now) "Ahora" else "${program.start.replace("T", " ").take(16)} – ${program.end.replace("T", " ").take(16)}", color = if (program.now) NetflixRed else TextSecondary, style = MaterialTheme.typography.labelSmall)
+                                }
+                            }
+                        }
+                    }
 
                     if (movie.isSeries) {
                         Spacer(modifier = Modifier.height(16.dp))

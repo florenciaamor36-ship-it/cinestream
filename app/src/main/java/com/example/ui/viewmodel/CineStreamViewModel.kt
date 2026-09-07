@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.data.model.Movie
+import com.example.data.model.EpgProgram
 import com.example.data.model.ServerStatusResponse
 import com.example.data.network.NetworkClient
 import com.example.data.player.MediaCacheManager
@@ -37,7 +38,9 @@ data class CineStreamUiState(
     val serverUrl: String = "http://10.0.2.2:8000/",
     val isServerConfigOpen: Boolean = false,
     val localCacheSizeMb: Double = 0.0,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val epgPrograms: List<EpgProgram> = emptyList(),
+    val epgLoading: Boolean = false
 )
 
 class CineStreamViewModel(application: Application) : AndroidViewModel(application) {
@@ -150,6 +153,18 @@ class CineStreamViewModel(application: Application) : AndroidViewModel(applicati
 
     fun navigateToDetail(movie: Movie) {
         _uiState.update { it.copy(currentScreen = AppScreen.Detail(movie)) }
+    }
+
+    fun loadEpg(movie: Movie) {
+        if (!movie.isLive || movie.sourceId <= 0) {
+            _uiState.update { it.copy(epgPrograms = emptyList(), epgLoading = false) }
+            return
+        }
+        viewModelScope.launch {
+            _uiState.update { it.copy(epgLoading = true) }
+            val result = repository.getChannelEpg(movie)
+            _uiState.update { it.copy(epgPrograms = result.getOrDefault(emptyList()), epgLoading = false) }
+        }
     }
 
     fun navigateToPlayer(movie: Movie) {

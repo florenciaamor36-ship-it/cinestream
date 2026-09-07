@@ -9,6 +9,7 @@ import androidx.compose.animation.*
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -90,10 +91,12 @@ fun CineStreamApp(
                 )
             }
             is AppScreen.Detail -> {
+                LaunchedEffect(screen.movie.sourceId) { viewModel.loadEpg(screen.movie) }
                 DetailScreen(
                     movie = screen.movie,
                     onBack = { viewModel.navigateBack() },
-                    onPlay = { movie -> viewModel.navigateToPlayer(movie) }
+                    onPlay = { movie -> viewModel.navigateToPlayer(movie) },
+                    epgPrograms = uiState.epgPrograms
                 )
             }
             is AppScreen.Player -> {
