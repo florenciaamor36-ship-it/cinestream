@@ -23,24 +23,15 @@ class MovieRepository {
                 genre = if (genre == "Todos") null else genre,
                 search = search
             )
-            if (response.isNotEmpty()) {
-                Result.success(response)
-            } else {
-                Result.success(getFallbackMovies(genre, search))
-            }
+            if (response.isNotEmpty()) Result.success(response)
+            else Result.failure(IllegalStateException("El backend no devolvió contenido"))
         } catch (e: Exception) {
-            // Si el backend aún no está levantado en el VPS, servimos el catálogo integrado
-            // con streams MP4 reales para que el usuario pueda probar el reproductor de inmediato
-            Result.success(getFallbackMovies(genre, search))
+            Result.failure(e)
         }
     }
 
     suspend fun getLiveChannels(category: String = "Todos"): Result<List<Movie>> = withContext(Dispatchers.IO) {
         try {
-            // Obtener canales predefinidos (catálogo masivo de TV en vivo)
-            val fallback = getFallbackLiveChannels(category)
-            android.util.Log.d("MovieRepository", "Loaded fallback channels: ${fallback.size}")
-
             // Consultar canales en tiempo real en YouTube
             val ytItems = try {
                 com.example.data.youtube.YouTubeLiveCrawler.searchLiveChannelsOnYouTube(category)
@@ -68,7 +59,7 @@ class MovieRepository {
             android.util.Log.d("MovieRepository", "Loaded pluto/IPTV channels: ${plutoChannels.size}")
 
             // Unir sin duplicados por ID o título
-            val allChannels = (fallback + mapped + plutoChannels).distinctBy { it.id }
+            val allChannels = (mapped + plutoChannels).distinctBy { it.id }
             android.util.Log.d("MovieRepository", "Combined channels total distinct: ${allChannels.size}")
 
             val filtered = if (category == "Todos" || category == "En Vivo") {
@@ -76,10 +67,11 @@ class MovieRepository {
             } else {
                 allChannels.filter { it.genre.equals(category, ignoreCase = true) }
             }
-            Result.success(filtered)
+            if (filtered.isNotEmpty()) Result.success(filtered)
+            else Result.failure(IllegalStateException("No hay canales reales disponibles"))
         } catch (e: Exception) {
             android.util.Log.e("MovieRepository", "Exception in getLiveChannels main block", e)
-            Result.success(getFallbackLiveChannels(category))
+            Result.failure(e)
         }
     }
 
@@ -103,33 +95,7 @@ class MovieRepository {
             val status = api.getServerStatus()
             Result.success(status)
         } catch (e: Exception) {
-            // Status de demostración
-            val mockWorkers = (1..20).map { id ->
-                WorkerStatus(
-                    botId = id,
-                    status = if (id == 3) "PAUSED" else "ACTIVE",
-                    isAvailable = id != 3,
-                    activeStreams = if (id % 4 == 0) 2 else 0,
-                    mbServed = (id * 45.2),
-                    pauseSecondsLeft = if (id == 3) 14 else 0,
-                    errors = if (id == 3) 1 else 0
-                )
-            }
-            val mockTelemetry = PoolTelemetry(
-                totalWorkers = 20,
-                activeWorkers = 19,
-                pausedWorkers = 1,
-                currentActiveStreams = 4,
-                totalDataServedMb = 1420.5,
-                workers = mockWorkers
-            )
-            Result.success(
-                ServerStatusResponse(
-                    status = "demo_mode",
-                    service = "CineStream Core (Servidor local desconectado)",
-                    workerPool = mockTelemetry
-                )
-            )
+            Result.failure(e)
         }
     }
 

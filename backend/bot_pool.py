@@ -19,14 +19,14 @@ from typing import AsyncGenerator, Dict, List, Optional, Tuple
 
 logger = logging.getLogger("CineStream.BotPool")
 
-# Intentar importar Pyrogram; si no está disponible, se activa el modo emulación para pruebas locales
+# Pyrogram es obligatorio en producción; no se usa modo emulado.
 try:
     from pyrogram import Client, errors
     from pyrogram.types import Message
     PYROGRAM_AVAILABLE = True
 except ImportError:
     PYROGRAM_AVAILABLE = False
-    logger.warning("Pyrogram no está instalado. El pool funcionará en modo emulación.")
+    logger.error("Pyrogram no está instalado. El pool no puede iniciar en producción.")
 
 
 class BotStatus(str, Enum):
@@ -68,8 +68,9 @@ class TelegramBotPool:
     """
 
     def __init__(self, api_id: Optional[int] = None, api_hash: Optional[str] = None):
-        self.api_id = api_id or int(os.getenv("API_ID", "123456"))
-        self.api_hash = api_hash or os.getenv("API_HASH", "sample_api_hash")
+        raw_api_id = api_id or os.getenv("API_ID")
+        self.api_id = int(raw_api_id) if raw_api_id else 0
+        self.api_hash = api_hash or os.getenv("API_HASH", "")
         self.workers: List[TelegramWorker] = []
         self._current_index: int = 0
         self._lock = asyncio.Lock()
@@ -83,10 +84,8 @@ class TelegramBotPool:
             if token and not token.startswith("sample_") and not "xxxx" in token:
                 tokens.append(token.strip())
         
-        # Si no hay tokens reales configurados, cargamos identificadores de prueba
         if not tokens:
-            logger.info("No se detectaron tokens de producción. Iniciando pool con 20 slots de prueba.")
-            tokens = [f"mock_token_{i}:AAFakeTokenSample_{i:02d}" for i in range(1, 21)]
+            raise RuntimeError("No hay tokens BOT_TOKEN_1..BOT_TOKEN_20 configurados; no se inicia un pool simulado.")
         return tokens
 
     async def start_pool(self):
@@ -94,8 +93,12 @@ class TelegramBotPool:
         if self._initialized:
             return
 
+        if not PYROGRAM_AVAILABLE:
+            raise RuntimeError("Pyrogram es obligatorio para iniciar el pool real de Telegram.")
+        if self.api_id <= 0 or not self.api_hash:
+            raise RuntimeError("API_ID y API_HASH son obligatorios para iniciar el pool real de Telegram.")
         tokens = self.load_bot_tokens_from_env()
-        logger.info(f"Iniciando Worker Pool con {len(tokens)} bots de Telegram...")
+        logger.info(f"Iniciando Worker Pool real con {len(tokens)} bots de Telegram...")
 
         for idx, token in enumerate(tokens, start=1):
             worker = TelegramWorker(
@@ -104,7 +107,7 @@ class TelegramBotPool:
                 status=BotStatus.CONNECTING
             )
 
-            if PYROGRAM_AVAILABLE and not token.startswith("mock_"):
+            if PYROGRAM_AVAILABLE:
                 try:
                     client = Client(
                         name=f"bot_worker_{idx}",
@@ -122,10 +125,6 @@ class TelegramBotPool:
                     worker.status = BotStatus.ERROR
                     worker.last_error = str(e)
                     logger.error(f"[Worker #{idx}] Error al conectar bot: {e}")
-            else:
-                # Modo emulado / testing
-                worker.status = BotStatus.ACTIVE
-
             self.workers.append(worker)
 
         self._initialized = True
@@ -205,9 +204,7 @@ class TelegramBotPool:
                 file_name = getattr(media, "file_name", f"video_{message_id}.mp4") or f"video_{message_id}.mp4"
                 return file_size, mime_type, file_name
             else:
-                # Simulación de metadata para testing o fallback
-                mock_size = 1_073_741_824  # 1 GB
-                return mock_size, "video/mp4", f"cinestream_content_{message_id}.mp4"
+                raise RuntimeError("El worker no tiene un cliente real conectado.")
         finally:
             self.release_worker(worker)
 
