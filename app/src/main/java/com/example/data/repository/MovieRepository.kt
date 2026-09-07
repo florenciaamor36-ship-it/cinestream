@@ -47,6 +47,12 @@ class MovieRepository {
         api.getIptvChannels().take(12).map { it.toMovie() }
     }
 
+    suspend fun getChannelEpg(channel: Movie): Result<List<com.example.data.model.EpgProgram>> =
+        withContext(Dispatchers.IO) {
+            if (channel.sourceId <= 0) return@withContext Result.failure(IllegalArgumentException("Canal sin identificador IPTV"))
+            runCatching { api.getChannelEpg(channel.sourceId) }
+        }
+
     suspend fun checkServerStatus(): Result<ServerStatusResponse> = withContext(Dispatchers.IO) {
         try {
             val status = api.getServerStatus()

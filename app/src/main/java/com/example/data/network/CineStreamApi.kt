@@ -37,6 +37,12 @@ interface CineStreamApi {
         @Query("grupo") category: String? = null,
         @Query("search") search: String? = null
     ): List<com.example.data.model.IptvChannel>
+
+    @GET("api/iptv/{channelId}/epg")
+    suspend fun getChannelEpg(
+        @Path("channelId") channelId: Int,
+        @Query("hours") hours: Int = 24
+    ): List<com.example.data.model.EpgProgram>
 }
 
 object NetworkClient {

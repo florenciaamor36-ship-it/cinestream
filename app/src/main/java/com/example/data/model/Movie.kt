@@ -21,7 +21,8 @@ data class Movie(
     @Json(name = "es_en_vivo") val isLive: Boolean = false,
     @Json(name = "es_serie") val isSeries: Boolean = false,
     @Json(name = "temporadas") val seasons: Int = 1,
-    @Json(name = "capitulos") val episodesCount: Int = 10
+    @Json(name = "capitulos") val episodesCount: Int = 10,
+    val sourceId: Int = 0
 )
 
 @JsonClass(generateAdapter = true)
@@ -49,7 +50,8 @@ data class IptvChannel(
         quality = "LIVE",
         sizeBytes = 0,
         streamUrl = url,
-        isLive = true
+        isLive = true,
+        sourceId = id
     )
 }
 
