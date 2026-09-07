@@ -1,0 +1,6 @@
+{
+  "name": "CineStream",
+  "description": "Aplicación de streaming de películas y series con arquitectura de granja de bots y reproductor Media3 con caché local.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
