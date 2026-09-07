@@ -32,8 +32,11 @@ interface CineStreamApi {
     @GET("api/status")
     suspend fun getServerStatus(): ServerStatusResponse
 
-    @GET("api/live/channels")
-    suspend fun getLiveChannels(): List<com.example.data.model.LiveChannel>
+    @GET("api/iptv/channels")
+    suspend fun getIptvChannels(
+        @Query("grupo") category: String? = null,
+        @Query("search") search: String? = null
+    ): List<com.example.data.model.IptvChannel>
 }
 
 object NetworkClient {

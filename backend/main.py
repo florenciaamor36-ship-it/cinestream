@@ -22,6 +22,7 @@ from database import AsyncSessionLocal, Pelicula, ListaM3U, CanalM3U, init_db
 from bot_pool import bot_pool
 from tmdb_scanner import scan_channel_and_enrich
 from m3u import parse_m3u
+from sync_iptv_sources import sync_enabled_sources
 from datetime import datetime
 import httpx
 from youtube_live import youtube_live_manager
@@ -38,6 +39,12 @@ async def lifespan(app: FastAPI):
     """Ciclo de vida de FastAPI: arranca BD, seed y Worker Pool de bots."""
     logger.info("Iniciando CineStream Streaming Engine...")
     await init_db()
+    if os.getenv("SYNC_IPTV_ON_STARTUP", "true").lower() == "true":
+        try:
+            imported = await sync_enabled_sources()
+            logger.info("IPTV sincronizado: %s canales.", imported)
+        except Exception as exc:
+            logger.error("No se pudo sincronizar IPTV al iniciar: %s", exc)
     if os.getenv("START_TELEGRAM_POOL", "false").lower() == "true":
         await bot_pool.start_pool()
         logger.info("Pool real de Telegram iniciado.")

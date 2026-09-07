@@ -25,6 +25,32 @@ data class Movie(
 )
 
 @JsonClass(generateAdapter = true)
+data class IptvChannel(
+    @Json(name = "id") val id: Int,
+    @Json(name = "nombre") val name: String,
+    @Json(name = "url") val url: String,
+    @Json(name = "grupo") val group: String = "Sin categoría",
+    @Json(name = "logo_url") val logoUrl: String = "",
+    @Json(name = "tvg_id") val tvgId: String = ""
+) {
+    fun toMovie(): Movie = Movie(
+        id = -id,
+        title = name,
+        synopsis = "Canal IPTV en vivo. Grupo: $group",
+        posterUrl = logoUrl,
+        backdropUrl = logoUrl,
+        genre = group,
+        durationMin = 0,
+        releaseYear = 0,
+        rating = 0.0,
+        quality = "LIVE",
+        sizeBytes = 0,
+        streamUrl = url,
+        isLive = true
+    )
+}
+
+@JsonClass(generateAdapter = true)
 data class LiveChannel(
     @Json(name = "id") val id: String,
     @Json(name = "nombre") val name: String,

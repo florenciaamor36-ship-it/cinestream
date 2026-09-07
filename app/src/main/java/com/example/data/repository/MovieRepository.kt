@@ -32,62 +32,19 @@ class MovieRepository {
 
     suspend fun getLiveChannels(category: String = "Todos"): Result<List<Movie>> = withContext(Dispatchers.IO) {
         try {
-            // Consultar canales en tiempo real en YouTube
-            val ytItems = try {
-                com.example.data.youtube.YouTubeLiveCrawler.searchLiveChannelsOnYouTube(category)
-            } catch (e: Exception) {
-                android.util.Log.e("MovieRepository", "Error searching YouTube live channels", e)
-                emptyList()
-            }
-            android.util.Log.d("MovieRepository", "Loaded ytItems: ${ytItems.size}")
-
-            val mapped = try {
-                ytItems.map { com.example.data.youtube.YouTubeLiveCrawler.toMovie(it) }
-            } catch (e: Exception) {
-                android.util.Log.e("MovieRepository", "Error mapping YouTube items to Movie", e)
-                emptyList()
-            }
-            android.util.Log.d("MovieRepository", "Mapped YT channels: ${mapped.size}")
-
-            // Consultar canales en tiempo real de Pluto TV
-            val plutoChannels = try {
-                com.example.data.plutotv.PlutoTVCrawler.fetchPlutoChannels(category)
-            } catch (e: Exception) {
-                android.util.Log.e("MovieRepository", "Error fetching Pluto TV/IPTV channels", e)
-                emptyList()
-            }
-            android.util.Log.d("MovieRepository", "Loaded pluto/IPTV channels: ${plutoChannels.size}")
-
-            // Unir sin duplicados por ID o título
-            val allChannels = (mapped + plutoChannels).distinctBy { it.id }
-            android.util.Log.d("MovieRepository", "Combined channels total distinct: ${allChannels.size}")
-
-            val filtered = if (category == "Todos" || category == "En Vivo") {
-                allChannels
-            } else {
-                allChannels.filter { it.genre.equals(category, ignoreCase = true) }
-            }
-            if (filtered.isNotEmpty()) Result.success(filtered)
-            else Result.failure(IllegalStateException("No hay canales reales disponibles"))
+            val response = api.getIptvChannels(
+                category = if (category == "Todos" || category == "En Vivo") null else category
+            )
+            val channels = response.map { it.toMovie() }
+            if (channels.isNotEmpty()) Result.success(channels)
+            else Result.failure(IllegalStateException("No hay canales IPTV importados"))
         } catch (e: Exception) {
-            android.util.Log.e("MovieRepository", "Exception in getLiveChannels main block", e)
             Result.failure(e)
         }
     }
 
-    private fun getFallbackLiveChannels(category: String = "Todos"): List<Movie> {
-        val allFallback = com.example.data.youtube.YouTubeLiveCrawler.predefinedChannels.map {
-            com.example.data.youtube.YouTubeLiveCrawler.toMovie(it)
-        }
-        return if (category == "Todos" || category == "En Vivo") {
-            allFallback
-        } else {
-            allFallback.filter { it.genre.equals(category, ignoreCase = true) }
-        }
-    }
-
     suspend fun getFeaturedLiveChannels(): List<Movie> = withContext(Dispatchers.IO) {
-        getFallbackLiveChannels("Todos")
+        api.getIptvChannels().take(12).map { it.toMovie() }
     }
 
     suspend fun checkServerStatus(): Result<ServerStatusResponse> = withContext(Dispatchers.IO) {
