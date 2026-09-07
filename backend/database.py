@@ -93,6 +93,9 @@ class CanalM3U(Base):
     grupo = Column(String(255), nullable=False, default="Sin categoría", index=True)
     logo_url = Column(String(1024), nullable=True)
     tvg_id = Column(String(255), nullable=True)
+    pais = Column(String(100), nullable=True)
+    idioma = Column(String(100), nullable=True)
+    descripcion = Column(Text, nullable=True)
     activo = Column(Boolean, nullable=False, default=True)
     ultima_verificacion = Column(DateTime, nullable=True)
 

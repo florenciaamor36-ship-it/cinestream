@@ -242,7 +242,9 @@ async def get_iptv_channels(
             stmt = stmt.where(CanalM3U.nombre.ilike(f"%{search}%"))
         result = await session.execute(stmt.order_by(CanalM3U.nombre.asc()))
         return [{"id": c.id, "nombre": c.nombre, "url": c.url, "grupo": c.grupo,
-                 "logo_url": c.logo_url or "", "tvg_id": c.tvg_id or ""}
+                 "logo_url": c.logo_url or "", "tvg_id": c.tvg_id or "",
+                 "pais": c.pais or "", "idioma": c.idioma or "",
+                 "descripcion": c.descripcion or ""}
                 for c in result.scalars().all()]
 
 

@@ -34,7 +34,8 @@ async def sync_enabled_sources() -> int:
                 await session.flush()
                 session.add_all(
                     CanalM3U(lista_id=source.id, nombre=c.name, url=c.url,
-                             grupo=c.group, logo_url=c.logo, tvg_id=c.tvg_id)
+                             grupo=c.group, logo_url=c.logo, tvg_id=c.tvg_id,
+                             pais=c.country, idioma=c.language, descripcion=c.description)
                     for c in channels
                 )
                 total += len(channels)

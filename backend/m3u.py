@@ -10,6 +10,9 @@ class M3UChannel:
     group: str = "Sin categoría"
     logo: str = ""
     tvg_id: str = ""
+    country: str = ""
+    language: str = ""
+    description: str = ""
 
 
 def parse_m3u(text: str) -> list[M3UChannel]:
@@ -27,6 +30,9 @@ def parse_m3u(text: str) -> list[M3UChannel]:
                 "group": attrs.get("group-title", "Sin categoría"),
                 "logo": attrs.get("tvg-logo", ""),
                 "tvg_id": attrs.get("tvg-id", ""),
+                "country": attrs.get("tvg-country", ""),
+                "language": attrs.get("tvg-language", ""),
+                "description": attrs.get("tvg-description", ""),
             }
         elif not line.startswith("#") and pending:
             parsed = urlparse(line)

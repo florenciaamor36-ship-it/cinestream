@@ -31,12 +31,15 @@ data class IptvChannel(
     @Json(name = "url") val url: String,
     @Json(name = "grupo") val group: String = "Sin categoría",
     @Json(name = "logo_url") val logoUrl: String = "",
-    @Json(name = "tvg_id") val tvgId: String = ""
+    @Json(name = "tvg_id") val tvgId: String = "",
+    @Json(name = "pais") val country: String = "",
+    @Json(name = "idioma") val language: String = "",
+    @Json(name = "descripcion") val description: String = ""
 ) {
     fun toMovie(): Movie = Movie(
         id = -id,
         title = name,
-        synopsis = "Canal IPTV en vivo. Grupo: $group",
+        synopsis = description.ifBlank { "Canal IPTV en vivo. Grupo: $group" },
         posterUrl = logoUrl,
         backdropUrl = logoUrl,
         genre = group,
