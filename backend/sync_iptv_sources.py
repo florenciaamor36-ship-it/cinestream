@@ -4,6 +4,7 @@ import httpx
 from database import AsyncSessionLocal, ListaM3U, CanalM3U, init_db
 from sqlalchemy import delete, select
 from m3u import parse_m3u
+from iptv_validator import validate_channels
 
 CONFIG_PATH = os.path.join(os.path.dirname(__file__), "iptv_sources.json")
 
@@ -20,6 +21,8 @@ async def sync_enabled_sources() -> int:
                 response = await client.get(item["url"])
                 response.raise_for_status()
                 channels = parse_m3u(response.text)
+                if os.getenv("VALIDATE_IPTV_STREAMS", "true").lower() == "true":
+                    channels = await validate_channels(channels)
                 if not channels:
                     continue
                 old = await session.execute(select(ListaM3U).where(ListaM3U.url_fuente == item["url"]))
