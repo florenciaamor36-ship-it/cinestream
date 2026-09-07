@@ -1,0 +1,9 @@
+{
+  "sources": [
+    {"name": "IPTV-EPG Argentina", "url": "https://iptv-epg.org/files/epg-ar.xml", "enabled": true},
+    {"name": "IPTV-EPG Chile", "url": "https://iptv-epg.org/files/epg-cl.xml", "enabled": false},
+    {"name": "IPTV-EPG Colombia", "url": "https://iptv-epg.org/files/epg-co.xml", "enabled": false},
+    {"name": "IPTV-EPG España", "url": "https://iptv-epg.org/files/epg-es.xml", "enabled": false},
+    {"name": "IPTV-EPG México", "url": "https://iptv-epg.org/files/epg-mx.xml", "enabled": false}
+  ]
+}

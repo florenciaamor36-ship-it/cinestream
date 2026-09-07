@@ -18,11 +18,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, JSONResponse
 from sqlalchemy import select
 
-from database import AsyncSessionLocal, Pelicula, ListaM3U, CanalM3U, init_db
+from database import AsyncSessionLocal, Pelicula, ListaM3U, CanalM3U, ProgramaEPG, init_db
 from bot_pool import bot_pool
 from tmdb_scanner import scan_channel_and_enrich
 from m3u import parse_m3u
 from sync_iptv_sources import sync_enabled_sources
+from sync_epg import sync_epg
 from datetime import datetime
 import httpx
 from youtube_live import youtube_live_manager
@@ -45,6 +46,12 @@ async def lifespan(app: FastAPI):
             logger.info("IPTV sincronizado: %s canales.", imported)
         except Exception as exc:
             logger.error("No se pudo sincronizar IPTV al iniciar: %s", exc)
+    if os.getenv("SYNC_EPG_ON_STARTUP", "true").lower() == "true":
+        try:
+            imported_epg = await sync_epg()
+            logger.info("EPG sincronizado: %s programas.", imported_epg)
+        except Exception as exc:
+            logger.error("No se pudo sincronizar EPG al iniciar: %s", exc)
     if os.getenv("START_TELEGRAM_POOL", "false").lower() == "true":
         await bot_pool.start_pool()
         logger.info("Pool real de Telegram iniciado.")
@@ -270,6 +277,25 @@ async def import_iptv_list(request: Request, nombre: str = Query(..., min_length
                                   logo_url=c.logo, tvg_id=c.tvg_id) for c in channels])
         await session.commit()
         return {"status": "success", "lista_id": source.id, "canales_importados": len(channels)}
+
+
+@app.get("/api/iptv/{channel_id}/epg")
+async def get_channel_epg(channel_id: int, hours: int = Query(24, ge=1, le=72)):
+    from datetime import datetime, timedelta
+    async with AsyncSessionLocal() as session:
+        channel = await session.get(CanalM3U, channel_id)
+        if not channel or not channel.tvg_id:
+            return []
+        now = datetime.utcnow()
+        stmt = select(ProgramaEPG).where(
+            ProgramaEPG.tvg_id == channel.tvg_id,
+            ProgramaEPG.fin >= now,
+            ProgramaEPG.inicio <= now + timedelta(hours=hours)
+        ).order_by(ProgramaEPG.inicio.asc())
+        result = await session.execute(stmt)
+        return [{"titulo": p.titulo, "descripcion": p.descripcion or "",
+                 "inicio": p.inicio.isoformat() + "Z", "fin": p.fin.isoformat() + "Z",
+                 "ahora": p.inicio <= now < p.fin} for p in result.scalars().all()]
 
 
 @app.get("/api/status")

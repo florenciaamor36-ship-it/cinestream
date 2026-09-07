@@ -83,6 +83,17 @@ class ListaM3U(Base):
     ultima_actualizacion = Column(DateTime, nullable=True)
 
 
+class ProgramaEPG(Base):
+    __tablename__ = "programas_epg"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    tvg_id = Column(String(255), nullable=False, index=True)
+    titulo = Column(String(512), nullable=False)
+    descripcion = Column(Text, nullable=True)
+    inicio = Column(DateTime, nullable=False, index=True)
+    fin = Column(DateTime, nullable=False, index=True)
+
+
 class CanalM3U(Base):
     __tablename__ = "canales_m3u"
 
