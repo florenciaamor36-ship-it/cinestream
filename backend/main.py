@@ -18,9 +18,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, JSONResponse
 from sqlalchemy import select
 
-from database import AsyncSessionLocal, Pelicula, init_db
+from database import AsyncSessionLocal, Pelicula, ListaM3U, CanalM3U, init_db
 from bot_pool import bot_pool
-from tmdb_scanner import scan_channel_and_enrich, seed_sample_movies
+from tmdb_scanner import scan_channel_and_enrich
+from m3u import parse_m3u
+from datetime import datetime
+import httpx
 from youtube_live import youtube_live_manager
 
 logging.basicConfig(
@@ -35,14 +38,15 @@ async def lifespan(app: FastAPI):
     """Ciclo de vida de FastAPI: arranca BD, seed y Worker Pool de bots."""
     logger.info("Iniciando CineStream Streaming Engine...")
     await init_db()
-    # Sembrar datos de demostración si la BD está limpia
-    await seed_sample_movies()
-    # Arrancar los 20 bots de Telegram
-    await bot_pool.start_pool()
-    logger.info("CineStream Backend operativo y listo para recibir clientes.")
+    if os.getenv("START_TELEGRAM_POOL", "false").lower() == "true":
+        await bot_pool.start_pool()
+        logger.info("Pool real de Telegram iniciado.")
+    else:
+        logger.info("Pool de Telegram desactivado: configure START_TELEGRAM_POOL=true cuando existan credenciales reales.")
+    logger.info("CineStream Backend operativo sin datos simulados.")
     yield
-    logger.info("Deteniendo CineStream Backend y liberando bots de Telegram...")
-    await bot_pool.stop_pool()
+    if bot_pool._initialized:
+        await bot_pool.stop_pool()
 
 
 app = FastAPI(
@@ -211,6 +215,54 @@ async def get_genres():
     return ["Todos"] + sorted(list(set(genres)))
 
 
+def require_admin(request: Request):
+    expected = os.getenv("ADMIN_API_KEY", "")
+    supplied = request.headers.get("X-Admin-Key", "")
+    if not expected or supplied != expected:
+        raise HTTPException(status_code=401, detail="Admin API key inválida o no configurada")
+
+
+@app.get("/api/iptv/channels")
+async def get_iptv_channels(
+    grupo: Optional[str] = Query(None),
+    search: Optional[str] = Query(None),
+):
+    async with AsyncSessionLocal() as session:
+        stmt = select(CanalM3U).where(CanalM3U.activo == True)
+        if grupo and grupo.lower() != "todos":
+            stmt = stmt.where(CanalM3U.grupo.ilike(f"%{grupo}%"))
+        if search:
+            stmt = stmt.where(CanalM3U.nombre.ilike(f"%{search}%"))
+        result = await session.execute(stmt.order_by(CanalM3U.nombre.asc()))
+        return [{"id": c.id, "nombre": c.nombre, "url": c.url, "grupo": c.grupo,
+                 "logo_url": c.logo_url or "", "tvg_id": c.tvg_id or ""}
+                for c in result.scalars().all()]
+
+
+@app.post("/api/admin/iptv/import")
+async def import_iptv_list(request: Request, nombre: str = Query(..., min_length=1), url: Optional[str] = Query(None)):
+    require_admin(request)
+    raw = await request.body()
+    if url:
+        async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
+            response = await client.get(url)
+            response.raise_for_status()
+            raw = response.content
+    if not raw:
+        raise HTTPException(status_code=400, detail="La lista M3U está vacía")
+    channels = parse_m3u(raw.decode("utf-8", errors="replace"))
+    if not channels:
+        raise HTTPException(status_code=422, detail="No se encontraron canales HTTP/HTTPS válidos")
+    async with AsyncSessionLocal() as session:
+        source = ListaM3U(nombre=nombre, url_fuente=url, ultima_actualizacion=datetime.utcnow())
+        session.add(source)
+        await session.flush()
+        session.add_all([CanalM3U(lista_id=source.id, nombre=c.name, url=c.url, grupo=c.group,
+                                  logo_url=c.logo, tvg_id=c.tvg_id) for c in channels])
+        await session.commit()
+        return {"status": "success", "lista_id": source.id, "canales_importados": len(channels)}
+
+
 @app.get("/api/status")
 async def get_server_status():
     """Métricas en tiempo real del estado de los 20 bots de Telegram."""
@@ -227,7 +279,10 @@ async def trigger_scan(
     limit: int = Query(30, ge=1, le=100)
 ):
     """Inicia el escaneo y parseo del canal de Telegram con TMDb en segundo plano."""
-    channel_id = int(os.getenv("TELEGRAM_CHANNEL_ID", "-1001987654321"))
+    raw_channel_id = os.getenv("TELEGRAM_CHANNEL_ID")
+    if not raw_channel_id:
+        raise HTTPException(status_code=503, detail="TELEGRAM_CHANNEL_ID no está configurado")
+    channel_id = int(raw_channel_id)
     ingested = await scan_channel_and_enrich(channel_id, limit=limit)
     return {
         "status": "success",

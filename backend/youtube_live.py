@@ -172,7 +172,7 @@ class YouTubeLiveManager:
                 logger.warning(f"yt-dlp subproceso retornó código {process.returncode}: {err_text}")
                 # Si yt-dlp no está instalado en el sistema o la transmisión falló,
                 # usamos un fallback de stream HLS en vivo de alta disponibilidad
-                return self._get_fallback_stream(youtube_url)
+                raise RuntimeError("No se pudo resolver el stream HLS real")
 
             raw_output = stdout.decode(errors="replace").strip()
             # Si hay múltiples líneas (audio + video), seleccionamos la primera o la que tenga .m3u8
@@ -185,32 +185,14 @@ class YouTubeLiveManager:
             if lines:
                 return lines[0]
 
-            return self._get_fallback_stream(youtube_url)
+            raise RuntimeError("No se pudo resolver el stream HLS real")
 
         except (asyncio.TimeoutError, FileNotFoundError) as exc:
             logger.warning(f"Subproceso no disponible o timeout ({exc}). Usando stream HLS de contingencia.")
-            return self._get_fallback_stream(youtube_url)
+            raise RuntimeError("No se pudo resolver el stream HLS real")
         except Exception as e:
             logger.error(f"Error inesperado al extraer HLS de YouTube: {e}")
-            return self._get_fallback_stream(youtube_url)
-
-    def _get_fallback_stream(self, youtube_url: str) -> str:
-        """
-        Fallback a transmisiones HLS reales de prueba compatibles con Android ExoPlayer
-        cuando el host no tiene instalado yt-dlp o en entornos de prueba.
-        """
-        # Streams HLS .m3u8 públicos 100% operativos
-        if "nasa" in youtube_url.lower():
-            return "https://ntv1.akamaized.net/hls/live/2014075/NASA-NTV1-HLS/master.m3u8"
-        if "euronews" in youtube_url.lower():
-            return "https://euronews-es-pso.tubi.video/playlist.m3u8"
-        if "dw" in youtube_url.lower():
-            return "https://dwamdstream102.akamaized.net/hls/live/2015525/dwstream102/index.m3u8"
-        if "france24" in youtube_url.lower():
-            return "https://static.france24.com/live/F24_ES_LO_HLS/live_tv.m3u8"
-        
-        # Test stream HLS estándar de Akamai / Apple
-        return "https://cph-p2p-msl.akamaized.net/hls/live/200034/test/master.m3u8"
+            raise RuntimeError("No se pudo resolver el stream HLS real")
 
     def clear_cache(self):
         """Limpia la caché de streams en memoria."""

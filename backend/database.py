@@ -48,7 +48,7 @@ class Pelicula(Base):
     duracion_min = Column(Integer, nullable=True, default=120)
     anio_estreno = Column(Integer, nullable=True, default=2024)
     calificacion = Column(Float, nullable=True, default=8.5)
-    tamano_bytes = Column(BigInteger, nullable=True, default=1073741824)  # ~1GB
+    tamano_bytes = Column(BigInteger, nullable=True)
     calidad_video = Column(String(50), nullable=True, default="1080p")
     mime_type = Column(String(50), nullable=True, default="video/mp4")
     es_destacada = Column(Boolean, default=False)
@@ -71,6 +71,30 @@ class Pelicula(Base):
             # El endpoint público oculta por completo el canal y el token de Telegram:
             "stream_url": f"{base_stream_url}/stream/{self.id_pelicula}"
         }
+
+
+class ListaM3U(Base):
+    __tablename__ = "listas_m3u"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    nombre = Column(String(255), nullable=False)
+    url_fuente = Column(String(1024), nullable=True)
+    activa = Column(Boolean, nullable=False, default=True)
+    ultima_actualizacion = Column(DateTime, nullable=True)
+
+
+class CanalM3U(Base):
+    __tablename__ = "canales_m3u"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    lista_id = Column(Integer, nullable=False, index=True)
+    nombre = Column(String(255), nullable=False, index=True)
+    url = Column(String(2048), nullable=False)
+    grupo = Column(String(255), nullable=False, default="Sin categoría", index=True)
+    logo_url = Column(String(1024), nullable=True)
+    tvg_id = Column(String(255), nullable=True)
+    activo = Column(Boolean, nullable=False, default=True)
+    ultima_verificacion = Column(DateTime, nullable=True)
 
 
 async def init_db():
