@@ -2,7 +2,7 @@ package com.example.data.repository
 
 import com.google.android.gms.tasks.Tasks
 import com.google.mlkit.nl.languageid.LanguageIdentification
-import com.google.mlkit.nl.translate.DownloadConditions
+import com.google.mlkit.common.model.DownloadConditions
 import com.google.mlkit.nl.translate.TranslateLanguage
 import com.google.mlkit.nl.translate.Translation
 import com.google.mlkit.nl.translate.TranslatorOptions
@@ -51,6 +51,6 @@ object OnDeviceSpanishTranslator {
             "kor", "korean" -> "ko"
             else -> raw.trim().lowercase().takeIf { it.length in 2..3 }
         }
-        return runCatching { TranslateLanguage.fromLanguageTag(tag) }.getOrNull()
+        return tag?.let { languageTag -> runCatching { TranslateLanguage.fromLanguageTag(languageTag) }.getOrNull() }
     }
 }
