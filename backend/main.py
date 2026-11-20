@@ -17,6 +17,10 @@ from fastapi import FastAPI, HTTPException, Request, Response, status, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, JSONResponse
 from sqlalchemy import select
+from dotenv import load_dotenv
+
+# Load local backend secrets before importing modules that read environment variables.
+load_dotenv()
 
 from database import AsyncSessionLocal, Pelicula, ListaM3U, CanalM3U, ProgramaEPG, init_db
 from bot_pool import bot_pool

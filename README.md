@@ -12,7 +12,7 @@ CineStream is an Android client and a FastAPI backend for browsing and playing m
 ## First milestone
 
 1. Keep the Telegram channel private and use only content you have permission to store and play.
-2. Configure one Telegram bot as a channel administrator for a small private test. Never commit bot tokens, API credentials, TMDb keys, or admin keys.
+2. Add the bot `@CineStreamLucasBot` as a channel administrator with only the access it needs. Start with one bot for a small private test. Never commit bot tokens, API credentials, TMDb keys, or admin keys.
 3. Configure the backend on a private server with HTTPS and a strong `ADMIN_API_KEY`.
 4. Run the authenticated scan and confirm a video appears in the catalog.
 5. Verify normal playback, seeking, resume, invalid ranges, disconnects, and server restart on a real Android device.
@@ -40,4 +40,4 @@ PYTHONPATH=backend python -m unittest discover -s backend/tests -v
 
 ## Android development
 
-Open the repository in Android Studio, let it install the project's Gradle/Android toolchain, then build and test on an emulator and a physical device. The repository currently lacks the Gradle wrapper scripts and wrapper JAR, so command-line/CI builds are not yet reproducible.
+Open the repository in Android Studio, let it install the project's Gradle/Android toolchain, then build and test on an emulator and a physical device. The repository currently lacks the Gradle wrapper scripts and wrapper JAR, so command-line/CI builds are not yet reproducible. The backend loads `backend/.env` at startup for local development; deployment environments may instead inject variables directly.
