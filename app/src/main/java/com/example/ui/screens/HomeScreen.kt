@@ -106,7 +106,7 @@ fun HomeScreen(
                     }
                 }
                 Text(
-                    text = "Cine de archivo · fichas de Internet Archive",
+                    text = "Cine, clásicos y más · fichas de Internet Archive",
                     style = MaterialTheme.typography.labelSmall,
                     color = TextSecondary,
                     modifier = Modifier.padding(start = 56.dp, bottom = 6.dp)
@@ -168,7 +168,7 @@ fun HomeScreen(
                         OutlinedTextField(
                             value = uiState.searchQuery,
                             onValueChange = onSearchChange,
-                            placeholder = { Text("Buscar en 2.300 fichas...", color = TextMuted) },
+                            placeholder = { Text("Buscar entre ${uiState.movies.size} títulos...", color = TextMuted) },
                             leadingIcon = {
                                 Icon(Icons.Default.Search, contentDescription = null, tint = TextMuted)
                             },
@@ -395,7 +395,10 @@ fun HomeScreen(
                     item {
                         HeroBillboard(
                             movie = featured,
-                            onPlayClick = { onPlayMovie(featured) },
+                            onPlayClick = {
+                                if (featured.archiveIdentifier.isNotBlank() && featured.licenseUrl != "http://creativecommons.org/publicdomain/mark/1.0/") onMovieClick(featured)
+                                else onPlayMovie(featured)
+                            },
                             onInfoClick = { onMovieClick(featured) }
                         )
                         Spacer(modifier = Modifier.height(24.dp))
@@ -445,7 +448,10 @@ fun HomeScreen(
                     item {
                         HeroBillboard(
                             movie = featured,
-                            onPlayClick = { onPlayMovie(featured) },
+                            onPlayClick = {
+                                if (featured.archiveIdentifier.isNotBlank() && featured.licenseUrl != "http://creativecommons.org/publicdomain/mark/1.0/") onMovieClick(featured)
+                                else onPlayMovie(featured)
+                            },
                             onInfoClick = { onMovieClick(featured) }
                         )
                         Spacer(modifier = Modifier.height(24.dp))
@@ -495,7 +501,7 @@ fun HomeScreen(
             ) {
                 item {
                     Text(
-                        text = "${uiState.movies.size} títulos del archivo · la ficha informa derechos declarados, no verificados",
+                        text = "${uiState.movies.size} títulos · años, idiomas y derechos son los que declara cada ficha",
                         style = MaterialTheme.typography.labelSmall,
                         color = TextSecondary,
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
@@ -507,18 +513,21 @@ fun HomeScreen(
                     item {
                         HeroBillboard(
                             movie = featured,
-                            onPlayClick = { onPlayMovie(featured) },
+                            onPlayClick = {
+                                if (featured.archiveIdentifier.isNotBlank() && featured.licenseUrl != "http://creativecommons.org/publicdomain/mark/1.0/") onMovieClick(featured)
+                                else onPlayMovie(featured)
+                            },
                             onInfoClick = { onMovieClick(featured) }
                         )
                         Spacer(modifier = Modifier.height(24.dp))
                     }
                 }
 
-                // Curated lazy rows keep the 2,300-title library responsive.
+                // Lazy rows keep the full catalog responsive.
                 if (allMoviesOnly.isNotEmpty()) {
                     item {
                         MovieRowSection(
-                            title = if (uiState.searchQuery.isBlank()) "Clásicos para descubrir" else "Resultados: ${allMoviesOnly.size}",
+                            title = if (uiState.searchQuery.isBlank()) "Películas para descubrir" else "Resultados: ${allMoviesOnly.size}",
                             badge = "ARCHIVO",
                             movies = if (uiState.searchQuery.isBlank()) allMoviesOnly.take(18) else allMoviesOnly,
                             onMovieClick = onMovieClick
@@ -635,7 +644,9 @@ private fun HeroBillboard(
                     shape = RoundedCornerShape(4.dp)
                 ) {
                     Text(
-                        text = movie.quality,
+                        text = if (movie.archiveIdentifier.isNotBlank()) {
+                            if (movie.licenseUrl == "http://creativecommons.org/publicdomain/mark/1.0/") "REVISAR DERECHOS" else "VER FICHA ORIGINAL"
+                        } else movie.quality,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
                         color = BadgeTeal,
@@ -694,7 +705,7 @@ private fun HeroBillboard(
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = "Reproducir",
+                        text = if (movie.archiveIdentifier.isNotBlank() && movie.licenseUrl != "http://creativecommons.org/publicdomain/mark/1.0/") "Ver ficha" else "Reproducir",
                         color = Color.Black,
                         fontWeight = FontWeight.Bold,
                         fontSize = 15.sp
@@ -823,7 +834,12 @@ fun MovieCard(
                             color = Color.White
                         )
                     } else if (movie.archiveIdentifier.isNotBlank()) {
-                        Text("ARCHIVO", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        Text(
+                            if (movie.licenseUrl == "http://creativecommons.org/publicdomain/mark/1.0/") "REVISAR" else "VER FICHA",
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
                     } else if (movie.rating >= 0.0) {
                         Text("★ ${movie.rating}", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = RatingGold)
                     }

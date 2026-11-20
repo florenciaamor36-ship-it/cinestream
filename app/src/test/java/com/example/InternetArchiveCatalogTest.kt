@@ -19,12 +19,14 @@ class InternetArchiveCatalogTest {
     fun bundledCatalogHasAllUniqueCandidatesAndDoesNotInventRatings() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val movies = InternetArchiveCatalog(context).load()
-        assertTrue("Filtered candidate library should stay substantial", movies.size in 2200..2300)
+        assertTrue("Expanded library should include almost all source results", movies.size in 29000..29634)
         assertEquals(movies.size, movies.map { it.archiveIdentifier }.distinct().size)
         assertFalse(movies.any { it.archiveIdentifier.isBlank() })
         assertFalse(movies.any { it.rating >= 0.0 })
         assertFalse(movies.any { it.streamUrl.isNotBlank() })
         assertNotNull(movies.firstOrNull { it.archiveIdentifier == "HorrorHotel" })
         assertFalse(movies.any { (it.title + " " + it.synopsis).contains("porn", ignoreCase = true) })
+        assertTrue(movies.any { it.licenseUrl.isBlank() })
+        assertTrue(movies.any { it.licenseUrl.isNotBlank() && it.licenseUrl != "http://creativecommons.org/publicdomain/mark/1.0/" })
     }
 }

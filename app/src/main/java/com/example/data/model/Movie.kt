@@ -28,7 +28,9 @@ data class Movie(
     val creator: String = "",
     val subjects: List<String> = emptyList(),
     val sourceUrl: String = "",
-    val rightsStatus: String = ""
+    val rightsStatus: String = "",
+    val sourceLanguage: String = "",
+    val formats: List<String> = emptyList()
 )
 
 @JsonClass(generateAdapter = true)

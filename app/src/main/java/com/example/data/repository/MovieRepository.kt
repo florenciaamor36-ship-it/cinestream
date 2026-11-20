@@ -49,7 +49,7 @@ class MovieRepository(context: Context) {
                 val metadata = JSONObject(body)
                 val rights = metadata.optJSONObject("metadata")?.optString("licenseurl").orEmpty()
                 check(rights == "http://creativecommons.org/publicdomain/mark/1.0/") {
-                    "La ficha ya no declara la marca de dominio público esperada; no voy a iniciar la reproducción."
+                    "Esta ficha no declara la marca de dominio público que CineStream admite para reproducir dentro de la app. Podés abrir la página original y revisar los derechos y condiciones de uso."
                 }
                 val files = metadata.optJSONArray("files") ?: error("La ficha no contiene archivos.")
                 val videoFiles = (0 until files.length()).mapNotNull { index -> files.optJSONObject(index) }

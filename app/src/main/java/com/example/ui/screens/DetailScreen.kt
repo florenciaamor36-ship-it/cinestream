@@ -13,6 +13,12 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -28,6 +34,8 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.example.data.model.Movie
 import com.example.data.model.EpgProgram
+import com.example.data.repository.OnDeviceSpanishTranslator
+import kotlinx.coroutines.launch
 import com.example.ui.theme.*
 
 @Composable
@@ -39,6 +47,12 @@ fun DetailScreen(
 ) {
     val scrollState = rememberScrollState()
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var translatedTitle by remember(movie.archiveIdentifier) { mutableStateOf<String?>(null) }
+    var translatedSynopsis by remember(movie.archiveIdentifier) { mutableStateOf<String?>(null) }
+    var isTranslating by remember(movie.archiveIdentifier) { mutableStateOf(false) }
+    var translationError by remember(movie.archiveIdentifier) { mutableStateOf<String?>(null) }
+    val canPlayInApp = movie.licenseUrl == "http://creativecommons.org/publicdomain/mark/1.0/"
 
     Scaffold(
         containerColor = DarkBackground
@@ -94,7 +108,7 @@ fun DetailScreen(
                 ) {
                     // Título de la Película
                     Text(
-                        text = movie.title,
+                        text = translatedTitle ?: movie.title,
                         style = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.Black,
                         color = Color.White,
@@ -108,7 +122,7 @@ fun DetailScreen(
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         if (movie.releaseYear > 0) {
-                            Text("Año en ficha ${movie.releaseYear}", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
+                            Text("Año indicado: ${movie.releaseYear}", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
                         }
                         if (movie.durationMin > 0) {
                             Text("${movie.durationMin} min en ficha", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
@@ -131,7 +145,11 @@ fun DetailScreen(
 
                     // 3. Botón Gigante de "Reproducir"
                     Button(
-                        onClick = { onPlay(movie) },
+                        onClick = {
+                            if (movie.archiveIdentifier.isNotBlank() && !canPlayInApp) {
+                                runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(movie.sourceUrl))) }
+                            } else onPlay(movie)
+                        },
                         colors = ButtonDefaults.buttonColors(containerColor = NetflixRed),
                         shape = RoundedCornerShape(8.dp),
                         modifier = Modifier
@@ -147,7 +165,11 @@ fun DetailScreen(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Reproducir Ahora",
+                            text = when {
+                                movie.archiveIdentifier.isBlank() -> "Reproducir ahora"
+                                canPlayInApp -> "Reproducir desde Internet Archive"
+                                else -> "Abrir ficha original"
+                            },
                             color = Color.White,
                             fontWeight = FontWeight.Bold,
                             fontSize = 16.sp
@@ -165,20 +187,61 @@ fun DetailScreen(
                     )
                     Spacer(modifier = Modifier.height(6.dp))
                     Text(
-                        text = movie.synopsis,
+                        text = translatedSynopsis ?: movie.synopsis,
                         style = MaterialTheme.typography.bodyMedium,
                         color = TextSecondary,
                         lineHeight = 22.sp
                     )
 
                     if (movie.archiveIdentifier.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "La primera vez descarga por Wi‑Fi el modelo del idioma; solo traduce texto de la ficha.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextMuted
+                        )
+                        TextButton(
+                            enabled = !isTranslating,
+                            onClick = {
+                                if (translatedTitle != null) {
+                                    translatedTitle = null
+                                    translatedSynopsis = null
+                                    translationError = null
+                                } else {
+                                    isTranslating = true
+                                    translationError = null
+                                    scope.launch {
+                                        try {
+                                            translatedTitle = OnDeviceSpanishTranslator.translate(movie.title, movie.sourceLanguage)
+                                            translatedSynopsis = OnDeviceSpanishTranslator.translate(movie.synopsis, movie.sourceLanguage)
+                                        } catch (e: Exception) {
+                                            translationError = "No pude traducir esta ficha. Con conexión, volvé a intentarlo."
+                                        } finally {
+                                            isTranslating = false
+                                        }
+                                    }
+                                }
+                            }
+                        ) {
+                            Text(when {
+                                isTranslating -> "Descargando modelo o traduciendo…"
+                                translatedTitle != null -> "Ver texto original"
+                                else -> "Traducir ficha al español"
+                            })
+                        }
+                        translationError?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
                         Spacer(modifier = Modifier.height(16.dp))
                         Card(colors = CardDefaults.cardColors(containerColor = DarkSurfaceVariant), shape = RoundedCornerShape(12.dp)) {
                             Column(modifier = Modifier.padding(14.dp)) {
                                 Text("Fuente y derechos", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = TextPrimary)
                                 Spacer(modifier = Modifier.height(6.dp))
                                 Text(
-                                    "Internet Archive declara Public Domain Mark 1.0 para este registro. Esa declaración no es una verificación legal independiente; revisá la ficha original y las condiciones de uso antes de reutilizar o redistribuir el contenido.",
+                                    if (canPlayInApp)
+                                        "La ficha declara la marca Public Domain Mark 1.0. Es una declaración del registro, no una verificación legal independiente; revisá la página original antes de reutilizar o redistribuir el contenido."
+                                    else if (movie.licenseUrl.isNotBlank())
+                                        "La ficha declara una licencia, pero CineStream no la verifica ni la admite para reproducir dentro de la app. Revisá sus condiciones en la página original."
+                                    else
+                                        "Esta ficha no declara una licencia. Por eso CineStream no habilita la reproducción dentro de la app. Revisá los derechos y condiciones en la página original.",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = TextSecondary,
                                     lineHeight = 19.sp

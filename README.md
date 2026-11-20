@@ -1,17 +1,15 @@
 # CineStream
 
-CineStream is an Android app for browsing film records and playing compatible files directly from their source. The first no-login/no-server catalog is a bundled snapshot of 2,300 Internet Archive movie records whose metadata declares Creative Commons Public Domain Mark 1.0. The catalogue does not claim independent legal verification; check each original item before reusing or redistributing media.
+CineStream opens directly to a Netflix-style browsing catalog—no sign-in, Telegram account, or VPS is required. Its bundled Internet Archive feature-films snapshot contains nearly all 29,634 search hits (some records tagged as explicit adult content are intentionally excluded).
 
-## First catalog milestone
+The app keeps source titles and descriptions and offers an on-demand Spanish translation of an item's title and description using downloadable on-device ML Kit models; the original record stays available. Automatic translation can be imperfect. This translates catalog text only, never audio or subtitles. A language field means only that the Archive metadata lists it, not that the audio/subtitles have been checked.
 
-- The Android app opens directly to a Netflix-style catalog; no Telegram login, bot, account, or VPS is required for browsing.
-- Search and browse locally bundled titles with poster thumbnails, year/duration when supplied, subjects, language and creator where supplied, synopsis/description, source page, and declared-rights warning.
-- Ratings, language/subtitle availability and resolution are not fabricated. Missing metadata is left blank.
-- On Play, the app rechecks the record's declared license and chooses a listed MP4 file from Internet Archive metadata, then plays the source URL directly. Availability, range seeking, playback compatibility, and rights claims still require per-title/device verification.
-- `app/src/main/assets/ia_public_domain_candidates.json` contains the 2,300-record snapshot and query provenance.
+The source query returns mixed kinds of records and metadata quality varies. Archive's `year` field can be the record/upload year, not theatrical release year, and posters/metadata may be missing. The app presents it as a year indicated by the source.
 
-The snapshot comes from Internet Archive Advanced Search (`mediatype:movies AND collection:feature_films AND licenseurl:"http://creativecommons.org/publicdomain/mark/1.0/"`). That mark is a metadata declaration, not a guarantee that every item is legally in the public domain. The app links to the original record and displays this caveat.
+CineStream only starts in-app video playback when the item currently declares Creative Commons Public Domain Mark 1.0, and then resolves an MP4 from its current metadata. This declaration is not independent legal verification. Items with other or no declared license remain in the catalog and link to the original record, but are not playable in-app. Individual availability/compatibility still needs testing.
+
+`app/src/main/assets/ia_public_domain_candidates.json.gz` holds the source snapshot. `tools/build_ia_catalog.py` uses the official Internet Archive cursor-based scraping API; `tools/validate_ia_catalog.py` validates the bundled catalog.
 
 ## Build
 
-Open the project in Android Studio and build `:app:assembleDebug`. CI builds and tests the Android project on pushes and pull requests.
+Build/test with `gradle :app:assembleDebug :app:testDebugUnitTest`. GitHub Actions also uploads the debug APK as an artifact for 14 days.

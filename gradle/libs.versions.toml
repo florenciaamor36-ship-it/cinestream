@@ -42,6 +42,8 @@ googleServices = "4.5.0"
 credentials = "1.5.0"
 googleid = "1.1.1"
 media3 = "1.5.1"
+mlkitTranslate = "17.0.3"
+mlkitLanguageId = "17.0.6"
 
 
 [libraries]
@@ -104,6 +106,8 @@ androidx-media3-exoplayer-hls = { group = "androidx.media3", name = "media3-exop
 androidx-media3-ui = { group = "androidx.media3", name = "media3-ui", version.ref = "media3" }
 androidx-media3-datasource-okhttp = { group = "androidx.media3", name = "media3-datasource-okhttp", version.ref = "media3" }
 androidx-media3-common = { group = "androidx.media3", name = "media3-common", version.ref = "media3" }
+mlkit-translate = { group = "com.google.mlkit", name = "translate", version.ref = "mlkitTranslate" }
+mlkit-language-id = { group = "com.google.mlkit", name = "language-id", version.ref = "mlkitLanguageId" }
 
 
 [plugins]
