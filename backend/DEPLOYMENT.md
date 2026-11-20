@@ -169,3 +169,19 @@ La app Android utiliza `SimpleCache` con `LeastRecentlyUsedCacheEvictor` de Andr
 
 ### 4. Afinidad de Centro de Datos (DC Affinity)
 Los archivos subidos a canales de Telegram se almacenan físicamente en un Data Center específico (ej. DC 2 - Ámsterdam, DC 4 - Países Bajos, DC 5 - Singapur). Procura contratar tu VPS en la misma región geográfica (ej. Europa / Frankfurt para DC 2/4) para reducir la latencia de MTProto de 120ms a menos de 10ms.
+
+## Private personal-library proof of concept
+
+Start with a private channel and one bot token, not a multi-bot farm. The bot must be added to the channel with the minimum permissions needed to read its media. Keep `API_ID`, `API_HASH`, `BOT_TOKEN_1`, `TELEGRAM_CHANNEL_ID`, and `ADMIN_API_KEY` only in the backend's local environment; never embed them in the Android app or commit them.
+
+Set `START_TELEGRAM_POOL=true` only after the server environment is configured. Set a long random `ADMIN_API_KEY`; `POST /api/scan` now requires it in the `X-Admin-Key` header. Put the backend behind HTTPS and do not expose the scan endpoint publicly without an additional access-control layer. The current Android app does not yet provide an authenticated scan/setup flow, so perform this first test from a trusted local admin client. Verify access to existing channel history and playback with a small authorized test video before adding more media.
+
+The repository's Telegram integration and byte-range implementation still need end-to-end testing. Do not assume successful startup means Telegram history access or seeking works.
+
+## Private personal-library proof of concept
+
+Start with a private channel and one bot token, not a multi-bot farm. The bot must be added to the channel with the minimum permissions needed to read its media. Keep `API_ID`, `API_HASH`, `BOT_TOKEN_1`, `TELEGRAM_CHANNEL_ID`, and `ADMIN_API_KEY` only in the backend's local environment; never embed them in the Android app or commit them.
+
+Set `START_TELEGRAM_POOL=true` only after the server environment is configured. Set a long random `ADMIN_API_KEY`; `POST /api/scan` now requires it in the `X-Admin-Key` header. Put the backend behind HTTPS and do not expose the scan endpoint publicly without an additional access-control layer. The current Android app does not yet provide an authenticated scan/setup flow, so perform this first test from a trusted local admin client. Verify access to existing channel history and playback with a small authorized test video before adding more media.
+
+The repository's Telegram integration and byte-range implementation still need end-to-end testing. Do not assume successful startup means Telegram history access or seeking works.

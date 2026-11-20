@@ -80,28 +80,39 @@ app.add_middleware(
 
 
 def parse_range_header(range_header: Optional[str], file_size: int) -> tuple[int, int]:
-    """
-    Parsea la cabecera HTTP 'Range: bytes=start-end'.
-    Devuelve la tupla (start_byte, end_byte).
-    """
+    """Parse one RFC 7233 byte range and reject unsatisfiable/malformed ranges."""
+    if file_size <= 0:
+        raise HTTPException(status_code=status.HTTP_416_REQUESTED_RANGE_NOT_SATISFIABLE)
     if not range_header:
         return 0, file_size - 1
 
-    match = re.match(r"bytes=(\d+)-(\d*)", range_header.strip())
-    if not match:
-        return 0, file_size - 1
-
-    start_str, end_str = match.groups()
-    start = int(start_str) if start_str else 0
-    end = int(end_str) if end_str else file_size - 1
-
-    if start >= file_size or end >= file_size or start > end:
+    match = re.fullmatch(r"bytes=(\d*)-(\d*)", range_header.strip())
+    if not match or not any(match.groups()):
         raise HTTPException(
             status_code=status.HTTP_416_REQUESTED_RANGE_NOT_SATISFIABLE,
-            detail=f"Rango solicitado {range_header} no es válido para tamaño de archivo {file_size} bytes."
+            detail="Solo se admite un rango de bytes válido.",
+            headers={"Content-Range": f"bytes */{file_size}"},
         )
 
-    return start, end
+    start_str, end_str = match.groups()
+    if not start_str:  # Suffix range: bytes=-N
+        suffix_length = int(end_str)
+        if suffix_length <= 0:
+            raise HTTPException(
+                status_code=status.HTTP_416_REQUESTED_RANGE_NOT_SATISFIABLE,
+                headers={"Content-Range": f"bytes */{file_size}"},
+            )
+        return max(0, file_size - suffix_length), file_size - 1
+
+    start = int(start_str)
+    end = int(end_str) if end_str else file_size - 1
+    if start >= file_size or end < start:
+        raise HTTPException(
+            status_code=status.HTTP_416_REQUESTED_RANGE_NOT_SATISFIABLE,
+            detail=f"Rango solicitado {range_header} no es válido para tamaño de archivo {file_size} bytes.",
+            headers={"Content-Range": f"bytes */{file_size}"},
+        )
+    return start, min(end, file_size - 1)
 
 
 @app.get("/stream/{id_pelicula}")
@@ -133,6 +144,7 @@ async def stream_movie(
     # 3. Parsear cabecera Range
     range_header = request.headers.get("Range")
     start_byte, end_byte = parse_range_header(range_header, file_size)
+    response_status = status.HTTP_206_PARTIAL_CONTENT if range_header else status.HTTP_200_OK
 
     content_length = (end_byte - start_byte) + 1
 
@@ -144,7 +156,6 @@ async def stream_movie(
 
     # 4. Cabeceras HTTP estándar para reproducción progresiva fluida en ExoPlayer
     headers = {
-        "Content-Range": f"bytes {start_byte}-{end_byte}/{file_size}",
         "Accept-Ranges": "bytes",
         "Content-Length": str(content_length),
         "Content-Type": movie.mime_type or "video/mp4",
@@ -163,9 +174,12 @@ async def stream_movie(
         chunk_size=1024 * 512  # 512 KB por bloque de stream
     )
 
+    if range_header:
+        headers["Content-Range"] = f"bytes {start_byte}-{end_byte}/{file_size}"
+
     return StreamingResponse(
         media_generator,
-        status_code=status.HTTP_206_PARTIAL_CONTENT,
+        status_code=response_status,
         headers=headers,
         media_type=movie.mime_type or "video/mp4"
     )
@@ -311,9 +325,11 @@ async def get_server_status():
 
 @app.post("/api/scan")
 async def trigger_scan(
+    request: Request,
     limit: int = Query(30, ge=1, le=100)
 ):
-    """Inicia el escaneo y parseo del canal de Telegram con TMDb en segundo plano."""
+    """Scan the configured Telegram channel. This operation is admin-only."""
+    require_admin(request)
     raw_channel_id = os.getenv("TELEGRAM_CHANNEL_ID")
     if not raw_channel_id:
         raise HTTPException(status_code=503, detail="TELEGRAM_CHANNEL_ID no está configurado")
