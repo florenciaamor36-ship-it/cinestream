@@ -106,7 +106,7 @@ out={'source':'Internet Archive Advanced Search scraping API','query':QUERY,'sou
 'audioNotice':'Metadata language is not proof of audio or subtitle language. CineStream does not dub, translate, or replace media tracks.',
 'metadataLanguageNotice':'Titles and descriptions in English or Portuguese can be translated into Spanish on the device using downloadable ML Kit language models. Original text remains available; machine translation can be imperfect.',
 'items':items}
-path=ROOT/'app/src/main/assets/ia_public_domain_candidates.json.gz'
+path=ROOT/'app/src/main/assets/ia_catalog_v2.dat'
 path.parent.mkdir(parents=True,exist_ok=True)
 with gzip.open(path,'wt',encoding='utf-8',compresslevel=9) as stream:
     json.dump(out,stream,ensure_ascii=False,separators=(',',':'))

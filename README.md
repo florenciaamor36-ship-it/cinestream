@@ -8,7 +8,7 @@ The source query returns mixed kinds of records and metadata quality varies. Arc
 
 CineStream only starts in-app video playback when the item currently declares Creative Commons Public Domain Mark 1.0, and then resolves an MP4 from its current metadata. This declaration is not independent legal verification. Items with other or no declared license remain in the catalog and link to the original record, but are not playable in-app. Individual availability/compatibility still needs testing.
 
-`app/src/main/assets/ia_public_domain_candidates.json.gz` holds the source snapshot. `tools/build_ia_catalog.py` uses the official Internet Archive cursor-based scraping API; `tools/validate_ia_catalog.py` validates the bundled catalog.
+`app/src/main/assets/ia_catalog_v2.dat` holds the source snapshot. `tools/build_ia_catalog.py` uses the official Internet Archive cursor-based scraping API; `tools/validate_ia_catalog.py` validates the bundled catalog.
 
 ## Build
 

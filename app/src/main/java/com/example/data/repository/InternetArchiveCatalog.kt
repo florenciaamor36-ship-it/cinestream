@@ -11,7 +11,7 @@ import java.util.Locale
  */
 internal class InternetArchiveCatalog(private val context: Context) {
     fun load(): List<Movie> {
-        val root = GZIPInputStream(context.assets.open("ia_public_domain_candidates.json.gz")).bufferedReader().use { JSONObject(it.readText()) }
+        val root = GZIPInputStream(context.assets.open("ia_catalog_v2.dat")).bufferedReader().use { JSONObject(it.readText()) }
         val records = root.getJSONArray("items")
         return buildList(records.length()) {
             for (index in 0 until records.length()) {

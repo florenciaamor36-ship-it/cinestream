@@ -2,7 +2,7 @@ import gzip
 import json
 from pathlib import Path
 
-path = Path(__file__).resolve().parents[1] / "app/src/main/assets/ia_public_domain_candidates.json.gz"
+path = Path(__file__).resolve().parents[1] / "app/src/main/assets/ia_catalog_v2.dat"
 with gzip.open(path, "rt", encoding="utf-8") as stream:
     data = json.load(stream)
 items = data["items"]
