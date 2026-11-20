@@ -40,12 +40,14 @@ data class CineStreamUiState(
     val localCacheSizeMb: Double = 0.0,
     val errorMessage: String? = null,
     val epgPrograms: List<EpgProgram> = emptyList(),
-    val epgLoading: Boolean = false
+    val epgLoading: Boolean = false,
+    val playbackLoading: Boolean = false,
+    val playbackError: String? = null
 )
 
 class CineStreamViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val repository = MovieRepository()
+    private val repository = MovieRepository(application)
 
     private val _uiState = MutableStateFlow(
         CineStreamUiState(
@@ -56,7 +58,6 @@ class CineStreamViewModel(application: Application) : AndroidViewModel(applicati
 
     init {
         refreshCatalog()
-        checkServer()
         updateCacheSize()
     }
 
@@ -96,41 +97,22 @@ class CineStreamViewModel(application: Application) : AndroidViewModel(applicati
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             val currentGenre = _uiState.value.selectedGenre
             val currentSearch = _uiState.value.searchQuery
-
-            // Cargar canales en vivo destacados ligeros para el carrusel de Inicio
-            val liveChannels = repository.getFeaturedLiveChannels()
-            val byCat = liveChannels.groupBy { it.genre }
-
             val result = repository.getMovies(currentGenre, currentSearch)
             result.onSuccess { list ->
-                val combinedList = if (currentGenre == "En Vivo") {
-                    liveChannels
-                } else if (currentGenre == "Todos") {
-                    list
-                } else {
-                    list
-                }
-
-                val featured = combinedList.firstOrNull { it.isFeatured } ?: combinedList.firstOrNull()
+                val genres = repository.getArchiveGenres()
                 _uiState.update {
                     it.copy(
-                        movies = combinedList,
-                        liveChannels = if (it.liveChannels.size <= 6) liveChannels else it.liveChannels,
-                        liveChannelsByCategory = if (it.liveChannels.size <= 6) byCat else it.liveChannelsByCategory,
-                        featuredMovie = featured,
-                        isLoading = false
+                        movies = list,
+                        liveChannels = emptyList(),
+                        liveChannelsByCategory = emptyMap(),
+                        availableGenres = listOf("Todos") + genres,
+                        featuredMovie = list.firstOrNull { it.posterUrl.isNotBlank() } ?: list.firstOrNull(),
+                        isLoading = false,
+                        errorMessage = null
                     )
                 }
             }.onFailure { err ->
-                _uiState.update {
-                    it.copy(
-                        liveChannels = if (it.liveChannels.size <= 6) liveChannels else it.liveChannels,
-                        liveChannelsByCategory = if (it.liveChannels.size <= 6) byCat else it.liveChannelsByCategory,
-                        movies = if (currentGenre == "En Vivo") liveChannels else emptyList(),
-                        isLoading = false,
-                        errorMessage = err.localizedMessage ?: "Error cargando catálogo"
-                    )
-                }
+                _uiState.update { it.copy(movies = emptyList(), isLoading = false, errorMessage = err.localizedMessage ?: "No pude cargar el catálogo") }
             }
         }
     }
@@ -168,8 +150,19 @@ class CineStreamViewModel(application: Application) : AndroidViewModel(applicati
     }
 
     fun navigateToPlayer(movie: Movie) {
-        _uiState.update { it.copy(currentScreen = AppScreen.Player(movie)) }
+        if (movie.archiveIdentifier.isBlank()) {
+            _uiState.update { it.copy(currentScreen = AppScreen.Player(movie)) }
+            return
+        }
+        viewModelScope.launch {
+            _uiState.update { it.copy(playbackLoading = true, playbackError = null) }
+            repository.resolveArchiveMovie(movie)
+                .onSuccess { resolved -> _uiState.update { it.copy(currentScreen = AppScreen.Player(resolved), playbackLoading = false) } }
+                .onFailure { error -> _uiState.update { it.copy(playbackLoading = false, playbackError = error.localizedMessage ?: "No pude resolver el video en Internet Archive") } }
+        }
     }
+
+    fun dismissPlaybackError() { _uiState.update { it.copy(playbackError = null) } }
 
     fun navigateBack() {
         _uiState.update {

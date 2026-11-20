@@ -1,43 +1,17 @@
 # CineStream
 
-CineStream is an Android client and a FastAPI backend for browsing and playing media from sources configured by the owner. The intended first milestone is a **private personal library**: an Android app talks to the owner's backend; the backend reads an owner-controlled Telegram channel and streams only media the owner is authorized to use.
+CineStream is an Android app for browsing film records and playing compatible files directly from their source. The first no-login/no-server catalog is a bundled snapshot of 2,300 Internet Archive movie records whose metadata declares Creative Commons Public Domain Mark 1.0. The catalogue does not claim independent legal verification; check each original item before reusing or redistributing media.
 
-## Current state
+## First catalog milestone
 
-- Android: Compose catalog/detail screens, Media3 player, server URL setting, and IPTV/EPG UI are present.
-- Backend: FastAPI catalog, Telegram channel scanner, HTTP byte-range streaming, IPTV import and EPG endpoints are present.
-- Not yet production-ready: Telegram access and byte-range playback need end-to-end verification; Android builds need to be restored to reproducible CI; server authentication, HTTPS, and deployment need to be configured before exposing it to a network.
-- Do not treat the current repository as a ready-to-install APK. No sample or demo catalog is evidence that Telegram playback works.
+- The Android app opens directly to a Netflix-style catalog; no Telegram login, bot, account, or VPS is required for browsing.
+- Search and browse locally bundled titles with poster thumbnails, year/duration when supplied, subjects, language and creator where supplied, synopsis/description, source page, and declared-rights warning.
+- Ratings, language/subtitle availability and resolution are not fabricated. Missing metadata is left blank.
+- On Play, the app rechecks the record's declared license and chooses a listed MP4 file from Internet Archive metadata, then plays the source URL directly. Availability, range seeking, playback compatibility, and rights claims still require per-title/device verification.
+- `app/src/main/assets/ia_public_domain_candidates.json` contains the 2,300-record snapshot and query provenance.
 
-## First milestone
+The snapshot comes from Internet Archive Advanced Search (`mediatype:movies AND collection:feature_films AND licenseurl:"http://creativecommons.org/publicdomain/mark/1.0/"`). That mark is a metadata declaration, not a guarantee that every item is legally in the public domain. The app links to the original record and displays this caveat.
 
-1. Keep the Telegram channel private and use only content you have permission to store and play.
-2. Add the bot `@CineStreamLucasBot` as a channel administrator with only the access it needs. Start with one bot for a small private test. Never commit bot tokens, API credentials, TMDb keys, or admin keys.
-3. Configure the backend on a private server with HTTPS and a strong `ADMIN_API_KEY`.
-4. Run the authenticated scan and confirm a video appears in the catalog.
-5. Verify normal playback, seeking, resume, invalid ranges, disconnects, and server restart on a real Android device.
-6. Only after that, decide whether to add series metadata, artwork correction, favorites, or any separate live-TV features.
+## Build
 
-A bot token is a server-side secret and must never be embedded in the APK. The scan endpoint is admin-only (`X-Admin-Key`) and must not be exposed without TLS. Use only a Telegram source the account and bot are authorized to access.
-
-## Backend development
-
-```sh
-cd backend
-python -m venv .venv
-. .venv/bin/activate
-pip install -r requirements.txt
-cp .env.example .env
-# Edit .env locally; do not commit it.
-uvicorn main:app --host 127.0.0.1 --port 8000
-```
-
-Run the unit tests from the repository root:
-
-```sh
-PYTHONPATH=backend python -m unittest discover -s backend/tests -v
-```
-
-## Android development
-
-Open the repository in Android Studio, let it install the project's Gradle/Android toolchain, then build and test on an emulator and a physical device. The repository currently lacks the Gradle wrapper scripts and wrapper JAR, so command-line/CI builds are not yet reproducible. The backend loads `backend/.env` at startup for local development; deployment environments may instead inject variables directly.
+Open the project in Android Studio and build `:app:assembleDebug`. CI builds and tests the Android project on pushes and pull requests.

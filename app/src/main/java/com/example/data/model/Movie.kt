@@ -22,7 +22,13 @@ data class Movie(
     @Json(name = "es_serie") val isSeries: Boolean = false,
     @Json(name = "temporadas") val seasons: Int = 1,
     @Json(name = "capitulos") val episodesCount: Int = 10,
-    val sourceId: Int = 0
+    val sourceId: Int = 0,
+    val archiveIdentifier: String = "",
+    val licenseUrl: String = "",
+    val creator: String = "",
+    val subjects: List<String> = emptyList(),
+    val sourceUrl: String = "",
+    val rightsStatus: String = ""
 )
 
 @JsonClass(generateAdapter = true)

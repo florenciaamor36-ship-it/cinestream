@@ -89,40 +89,10 @@ fun HomeScreen(
                         )
                     }
 
-                    // Acciones: Indicador de servidor + Búsqueda + Config
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        // Badge de estado de la granja de bots
-                        val isOnline = uiState.serverStatus?.status == "online"
-                        Surface(
-                            color = if (isOnline) Color(0xFF1B382B) else Color(0xFF382618),
-                            shape = RoundedCornerShape(20.dp),
-                            modifier = Modifier
-                                .clickable { onOpenServerConfig() }
-                                .padding(end = 8.dp)
-                                .testTag("server_status_pill")
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(7.dp)
-                                        .background(
-                                            if (isOnline) Color(0xFF4CAF50) else Color(0xFFFF9800),
-                                            shape = CircleShape
-                                        )
-                                )
-                                Spacer(modifier = Modifier.width(5.dp))
-                                Text(
-                                    text = if (isOnline) "CDN Online" else "Modo Streaming",
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Medium,
-                                    color = if (isOnline) Color(0xFF81C784) else Color(0xFFFFB74D)
-                                )
-                            }
+                        IconButton(onClick = onRefresh, modifier = Modifier.testTag("refresh_catalog_button")) {
+                            Icon(Icons.Default.Refresh, contentDescription = "Actualizar catálogo", tint = TextPrimary)
                         }
-
                         IconButton(
                             onClick = { showSearchBar = !showSearchBar },
                             modifier = Modifier.testTag("toggle_search_button")
@@ -133,19 +103,14 @@ fun HomeScreen(
                                 tint = TextPrimary
                             )
                         }
-
-                        IconButton(
-                            onClick = onOpenServerConfig,
-                            modifier = Modifier.testTag("open_config_button")
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Tune,
-                                contentDescription = "Configuración",
-                                tint = TextPrimary
-                            )
-                        }
                     }
                 }
+                Text(
+                    text = "Cine de archivo · fichas de Internet Archive",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = TextSecondary,
+                    modifier = Modifier.padding(start = 56.dp, bottom = 6.dp)
+                )
 
                 // Selector de Pestaña: Inicio vs Películas vs Series vs TV en Vivo
                 Row(
@@ -154,7 +119,7 @@ fun HomeScreen(
                         .padding(horizontal = 16.dp, vertical = 4.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    val tabs = listOf("Inicio", "Películas", "Series", "TV en Vivo")
+                    val tabs = listOf("Inicio", "Películas")
                     tabs.forEach { tab ->
                         val isSelected = uiState.activeTab == tab
                         Surface(
@@ -203,7 +168,7 @@ fun HomeScreen(
                         OutlinedTextField(
                             value = uiState.searchQuery,
                             onValueChange = onSearchChange,
-                            placeholder = { Text("Buscar películas o señales...", color = TextMuted) },
+                            placeholder = { Text("Buscar en 2.300 fichas...", color = TextMuted) },
                             leadingIcon = {
                                 Icon(Icons.Default.Search, contentDescription = null, tint = TextMuted)
                             },
@@ -438,7 +403,7 @@ fun HomeScreen(
                 }
 
                 // Películas por Género
-                val genres = listOf("Ciencia Ficción", "Acción", "Drama", "Suspenso", "Aventura")
+                val genres = moviesOnly.map { it.genre }.distinct().sorted()
                 genres.forEach { genreName ->
                     val filteredInGenre = moviesOnly.filter { it.genre.equals(genreName, ignoreCase = true) }
                     if (filteredInGenre.isNotEmpty() && (uiState.selectedGenre == "Todos" || uiState.selectedGenre.equals(genreName, ignoreCase = true))) {
@@ -528,6 +493,14 @@ fun HomeScreen(
                     .testTag("movies_catalog_list"),
                 contentPadding = PaddingValues(bottom = 32.dp)
             ) {
+                item {
+                    Text(
+                        text = "${uiState.movies.size} títulos del archivo · la ficha informa derechos declarados, no verificados",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = TextSecondary,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                    )
+                }
                 // 1. Hero Featured Movie Billboard (unificado)
                 val globalFeatured = uiState.featuredMovie ?: uiState.movies.firstOrNull()
                 globalFeatured?.let { featured ->
@@ -541,57 +514,52 @@ fun HomeScreen(
                     }
                 }
 
-                // 2. Fila: Canales de TV en Vivo Destacados (Acceso rápido horizontal)
-                if (uiState.liveChannels.isNotEmpty()) {
-                    item {
-                        MovieRowSection(
-                            title = "Televisión en Vivo (Acceso Rápido)",
-                            badge = "TV EN VIVO",
-                            movies = uiState.liveChannels.take(8),
-                            onMovieClick = onMovieClick
-                        )
-                        Spacer(modifier = Modifier.height(20.dp))
-                    }
-                }
-
-                // 3. Fila: Películas Destacadas
+                // Curated lazy rows keep the 2,300-title library responsive.
                 if (allMoviesOnly.isNotEmpty()) {
                     item {
                         MovieRowSection(
-                            title = "Películas Recomendadas para Ti",
-                            badge = "CINE HD",
-                            movies = allMoviesOnly,
+                            title = if (uiState.searchQuery.isBlank()) "Clásicos para descubrir" else "Resultados: ${allMoviesOnly.size}",
+                            badge = "ARCHIVO",
+                            movies = if (uiState.searchQuery.isBlank()) allMoviesOnly.take(18) else allMoviesOnly,
                             onMovieClick = onMovieClick
                         )
                         Spacer(modifier = Modifier.height(20.dp))
                     }
-                }
-
-                // 4. Fila: Series Destacadas
-                if (allSeriesOnly.isNotEmpty()) {
-                    item {
-                        MovieRowSection(
-                            title = "Series Populares del Momento",
-                            badge = "SERIE",
-                            movies = allSeriesOnly,
-                            onMovieClick = onMovieClick
-                        )
-                        Spacer(modifier = Modifier.height(20.dp))
+                    if (uiState.searchQuery.isBlank()) {
+                        allMoviesOnly.groupBy { it.genre }.toSortedMap().forEach { (genreName, titles) ->
+                            item {
+                                MovieRowSection(
+                                    title = genreName,
+                                    movies = titles,
+                                    onMovieClick = onMovieClick
+                                )
+                                Spacer(modifier = Modifier.height(16.dp))
+                            }
+                        }
                     }
-                }
-
-                // 5. Fila: Tendencias del Mes
-                val trending = uiState.movies.filter { it.rating >= 8.5 }
-                if (trending.isNotEmpty()) {
+                } else if (!uiState.isLoading) {
                     item {
-                        MovieRowSection(
-                            title = "Aclamadas por la Crítica",
-                            badge = "TOP",
-                            movies = trending,
-                            onMovieClick = onMovieClick
+                        Text(
+                            text = uiState.errorMessage ?: "No encontré títulos con esa búsqueda.",
+                            color = TextSecondary,
+                            modifier = Modifier.padding(24.dp)
                         )
                     }
                 }
+                if (uiState.isLoading) {
+                    item {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(24.dp),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            CircularProgressIndicator(color = NetflixRed, modifier = Modifier.size(24.dp))
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text("Cargando catálogo…", color = TextSecondary)
+                        }
+                    }
+                }
+
             }
         }
     }
@@ -655,7 +623,7 @@ private fun HeroBillboard(
                     shape = RoundedCornerShape(4.dp)
                 ) {
                     Text(
-                        text = "DESTACADO",
+                        text = if (movie.archiveIdentifier.isNotBlank()) "CINE DE ARCHIVO" else "DESTACADO",
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.White,
@@ -674,12 +642,9 @@ private fun HeroBillboard(
                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                     )
                 }
-                Text(
-                    text = "★ ${movie.rating}",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = RatingGold
-                )
+                if (movie.rating >= 0.0) {
+                    Text("★ ${movie.rating}", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = RatingGold)
+                }
             }
 
             Spacer(modifier = Modifier.height(6.dp))
@@ -857,13 +822,10 @@ fun MovieCard(
                             fontWeight = FontWeight.Black,
                             color = Color.White
                         )
-                    } else {
-                        Text(
-                            text = "★ ${movie.rating}",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = RatingGold
-                        )
+                    } else if (movie.archiveIdentifier.isNotBlank()) {
+                        Text("ARCHIVO", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    } else if (movie.rating >= 0.0) {
+                        Text("★ ${movie.rating}", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = RatingGold)
                     }
                 }
             }

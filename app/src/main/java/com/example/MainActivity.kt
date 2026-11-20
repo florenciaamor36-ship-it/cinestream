@@ -6,8 +6,12 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.*
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Surface
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -84,7 +88,7 @@ fun CineStreamApp(
                     onPlayMovie = { movie -> viewModel.navigateToPlayer(movie) },
                     onGenreSelect = { genre -> viewModel.onGenreSelected(genre) },
                     onSearchChange = { query -> viewModel.onSearchQueryChanged(query) },
-                    onOpenServerConfig = { viewModel.openServerConfig() },
+                    onOpenServerConfig = {},
                     onRefresh = { viewModel.refreshCatalog() },
                     onSelectTab = { tab -> viewModel.selectTab(tab) },
                     onLiveCategorySelect = { cat -> viewModel.onLiveCategorySelected(cat) }
@@ -106,6 +110,29 @@ fun CineStreamApp(
                 )
             }
         }
+    }
+
+    if (uiState.playbackLoading) {
+        AlertDialog(
+            onDismissRequest = {},
+            title = { Text("Preparando película") },
+            text = {
+                androidx.compose.foundation.layout.Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                    CircularProgressIndicator()
+                    androidx.compose.foundation.layout.Spacer(Modifier.width(16.dp))
+                    Text("Comprobando archivo y derechos declarados en Internet Archive…")
+                }
+            },
+            confirmButton = {}
+        )
+    }
+    uiState.playbackError?.let { error ->
+        AlertDialog(
+            onDismissRequest = { viewModel.dismissPlaybackError() },
+            title = { Text("No se pudo reproducir") },
+            text = { Text(error) },
+            confirmButton = { TextButton(onClick = { viewModel.dismissPlaybackError() }) { Text("Entendido") } }
+        )
     }
 
     // Diálogo de Configuración del Servidor y Granja de Bots

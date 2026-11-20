@@ -1,5 +1,7 @@
 package com.example.ui.screens
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -36,6 +38,7 @@ fun DetailScreen(
     epgPrograms: List<EpgProgram> = emptyList()
 ) {
     val scrollState = rememberScrollState()
+    val context = LocalContext.current
 
     Scaffold(
         containerColor = DarkBackground
@@ -100,62 +103,27 @@ fun DetailScreen(
 
                     Spacer(modifier = Modifier.height(10.dp))
 
-                    // Metadatos en fila (Año, Calificación, Duración, Calidad)
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        Text(
-                            text = "${movie.releaseYear}",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = TextSecondary,
-                            fontWeight = FontWeight.Medium
-                        )
-
-                        Surface(
-                            color = DarkSurfaceVariant,
-                            shape = RoundedCornerShape(4.dp)
-                        ) {
-                            Text(
-                                text = "16+",
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = TextPrimary,
-                                modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
-                            )
+                        if (movie.releaseYear > 0) {
+                            Text("Año en ficha ${movie.releaseYear}", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
                         }
-
-                        Text(
-                            text = "${movie.durationMin} min",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = TextSecondary,
-                            fontWeight = FontWeight.Medium
-                        )
-
-                        Surface(
-                            color = DarkSurfaceElevated,
-                            shape = RoundedCornerShape(4.dp)
-                        ) {
-                            Text(
-                                text = movie.quality,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = BadgeTeal,
-                                modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
-                            )
+                        if (movie.durationMin > 0) {
+                            Text("${movie.durationMin} min en ficha", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
                         }
-
-                        Surface(
-                            color = DarkSurfaceElevated,
-                            shape = RoundedCornerShape(4.dp)
-                        ) {
+                        Surface(color = DarkSurfaceVariant, shape = RoundedCornerShape(4.dp)) {
                             Text(
-                                text = "DOLBY 5.1",
+                                text = if (movie.archiveIdentifier.isNotBlank()) "INTERNET ARCHIVE" else movie.quality,
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = TextPrimary,
-                                modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
+                                color = BadgeTeal,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
                             )
+                        }
+                        if (movie.genre.isNotBlank()) {
+                            Text(movie.genre, style = MaterialTheme.typography.bodySmall, color = TextSecondary)
                         }
                     }
 
@@ -188,56 +156,6 @@ fun DetailScreen(
 
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    // Botones de Acciones Secundarias (+ Mi Lista, Descargar)
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        OutlinedButton(
-                            onClick = { /* Guardado en lista */ },
-                            shape = RoundedCornerShape(8.dp),
-                            border = ButtonDefaults.outlinedButtonBorder.copy(
-                                brush = Brush.linearGradient(listOf(AccentBorder, AccentBorder))
-                            ),
-                            colors = ButtonDefaults.outlinedButtonColors(containerColor = DarkSurfaceVariant),
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(44.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Add,
-                                contentDescription = null,
-                                tint = TextPrimary,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(text = "Mi Lista", color = TextPrimary, fontWeight = FontWeight.SemiBold)
-                        }
-
-                        OutlinedButton(
-                            onClick = { /* Descargar */ },
-                            shape = RoundedCornerShape(8.dp),
-                            border = ButtonDefaults.outlinedButtonBorder.copy(
-                                brush = Brush.linearGradient(listOf(AccentBorder, AccentBorder))
-                            ),
-                            colors = ButtonDefaults.outlinedButtonColors(containerColor = DarkSurfaceVariant),
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(44.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Download,
-                                contentDescription = null,
-                                tint = TextPrimary,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(text = "Descargar", color = TextPrimary, fontWeight = FontWeight.SemiBold)
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(20.dp))
-
                     // 4. Sinopsis
                     Text(
                         text = "Sinopsis",
@@ -252,6 +170,25 @@ fun DetailScreen(
                         color = TextSecondary,
                         lineHeight = 22.sp
                     )
+
+                    if (movie.archiveIdentifier.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Card(colors = CardDefaults.cardColors(containerColor = DarkSurfaceVariant), shape = RoundedCornerShape(12.dp)) {
+                            Column(modifier = Modifier.padding(14.dp)) {
+                                Text("Fuente y derechos", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = TextPrimary)
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(
+                                    "Internet Archive declara Public Domain Mark 1.0 para este registro. Esa declaración no es una verificación legal independiente; revisá la ficha original y las condiciones de uso antes de reutilizar o redistribuir el contenido.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = TextSecondary,
+                                    lineHeight = 19.sp
+                                )
+                                TextButton(onClick = {
+                                    runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(movie.sourceUrl))) }
+                                }) { Text("Abrir ficha original de Internet Archive") }
+                            }
+                        }
+                    }
 
                     if (movie.isLive && epgPrograms.isNotEmpty()) {
                         Spacer(modifier = Modifier.height(20.dp))
@@ -375,7 +312,8 @@ fun DetailScreen(
 
                     Spacer(modifier = Modifier.height(20.dp))
 
-                    // 5. Detalles Técnicos de Reproducción Premium
+                    // Technical playback claims are shown only for legacy configured media; Archive records are verified on demand.
+                    if (movie.archiveIdentifier.isBlank()) {
                     Card(
                         colors = CardDefaults.cardColors(containerColor = DarkSurfaceVariant),
                         shape = RoundedCornerShape(12.dp),
@@ -411,6 +349,8 @@ fun DetailScreen(
                                 lineHeight = 20.sp
                             )
                         }
+                    }
+
                     }
 
                     Spacer(modifier = Modifier.height(32.dp))
