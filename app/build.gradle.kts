@@ -22,7 +22,7 @@ android {
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     // Keep the distributable debug APK compatible with modern Android phones and small enough to share.
-    ndk { abiFilters += listOf("arm64-v8a") }
+    ndk { abiFilters += listOf("arm64-v8a", "x86_64") }
   }
 
   signingConfigs {

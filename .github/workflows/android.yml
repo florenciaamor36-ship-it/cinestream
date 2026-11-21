@@ -36,7 +36,9 @@ jobs:
           arch: x86_64
           profile: pixel_2
           disable-animations: true
-          script: gradle :app:connectedDebugAndroidTest --no-daemon
+          script: |
+            timeout 240 sh -c 'until adb shell service check package 2>/dev/null | grep -q found && adb shell service check activity 2>/dev/null | grep -q found; do sleep 5; done'
+            gradle :app:connectedDebugAndroidTest --no-daemon
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
