@@ -4,6 +4,7 @@ import android.content.Intent
 import android.net.Uri
 import android.view.ViewGroup
 import android.webkit.WebChromeClient
+import android.webkit.ConsoleMessage
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -78,6 +79,7 @@ fun PlayerScreen(
         object {
             @JavascriptInterface
             fun onPlayerReady() {
+                android.util.Log.i("CineStreamYouTube", "IFrame API ready for ${movie.streamUrl}")
                 mainHandler.post {
                     youtubePageLoaded = true
                     youtubePlaybackError = false
@@ -86,6 +88,7 @@ fun PlayerScreen(
 
             @JavascriptInterface
             fun onPlayerPlaying() {
+                android.util.Log.i("CineStreamYouTube", "IFrame API reported PLAYING")
                 mainHandler.post {
                     youtubePageLoaded = true
                     youtubePlaybackStarted = true
@@ -96,6 +99,7 @@ fun PlayerScreen(
 
             @JavascriptInterface
             fun onPlayerError(code: Int) {
+                android.util.Log.e("CineStreamYouTube", "IFrame API error $code for ${movie.streamUrl}")
                 mainHandler.post {
                     youtubeErrorMessage = when (code) {
                         2 -> "El identificador del video no es válido."
@@ -267,9 +271,15 @@ fun PlayerScreen(
                         settings.useWideViewPort = true
                         settings.mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
                         addJavascriptInterface(youtubeBridge, "AndroidBridge")
-                        webChromeClient = WebChromeClient()
+                        webChromeClient = object : WebChromeClient() {
+                            override fun onConsoleMessage(message: ConsoleMessage): Boolean {
+                                android.util.Log.d("CineStreamYouTube", "JS ${message.messageLevel()}: ${message.message()} (${message.sourceId()}:${message.lineNumber()})")
+                                return true
+                            }
+                        }
                         webViewClient = object : WebViewClient() {
                             override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
+                                android.util.Log.i("CineStreamYouTube", "WebView loading $url")
                                 youtubePlaybackError = false
                                 youtubePageLoaded = false
                                 youtubePlaybackStarted = false
@@ -281,6 +291,7 @@ fun PlayerScreen(
                                 request: WebResourceRequest?,
                                 error: WebResourceError?
                             ) {
+                                android.util.Log.e("CineStreamYouTube", "WebView error ${error?.errorCode}: ${error?.description} for ${request?.url}")
                                 if (request?.isForMainFrame == true) {
                                     youtubeErrorMessage = "No pude conectar con YouTube. Revisá la conexión o el DNS del teléfono."
                                     youtubePlaybackError = true
@@ -537,7 +548,7 @@ fun PlayerScreen(
                         ) {
                             Icon(Icons.Default.ErrorOutline, contentDescription = null, tint = NetflixRed, modifier = Modifier.size(36.dp))
                             Spacer(modifier = Modifier.height(8.dp))
-                            Text(youtubeErrorMessage, color = Color.White, fontSize = 14.sp)
+                            Text(youtubeErrorMessage, color = Color.White, fontSize = 14.sp, modifier = Modifier.testTag("youtube_player_error_message"))
                             Spacer(modifier = Modifier.height(12.dp))
                             Button(
                                 onClick = {

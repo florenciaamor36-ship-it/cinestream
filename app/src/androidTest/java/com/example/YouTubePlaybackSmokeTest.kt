@@ -4,6 +4,7 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextInput
 import androidx.test.core.app.ApplicationProvider
 import android.content.Context
 import com.example.MainActivity
@@ -29,14 +30,22 @@ class YouTubePlaybackSmokeTest {
 
     @Test
     fun appOpensMovieAndLoadsOfficialYoutubeEmbedPage() {
+        // Pick a deterministic curated entry instead of whichever movie happens to be featured.
         composeRule.waitUntil(timeoutMillis = 60_000) {
-            runCatching {
-                // The home hero can be any current first item after RSS refresh; assert the play action, not a fixed title.
-                composeRule.onNodeWithTag("hero_play_button").fetchSemanticsNode()
-                true
-            }.getOrDefault(false)
+            runCatching { composeRule.onNodeWithTag("toggle_search_button").fetchSemanticsNode(); true }.getOrDefault(false)
         }
-        composeRule.onNodeWithTag("hero_play_button").performClick()
+        composeRule.onNodeWithTag("toggle_search_button").performClick()
+        composeRule.waitUntil(timeoutMillis = 15_000) {
+            runCatching { composeRule.onNodeWithTag("search_text_field").fetchSemanticsNode(); true }.getOrDefault(false)
+        }
+        composeRule.onNodeWithTag("search_text_field").performTextInput("Dos Puños Contra Rio")
+        composeRule.waitUntil(timeoutMillis = 30_000) {
+            runCatching { composeRule.onNodeWithTag("movie_card_10").fetchSemanticsNode(); true }.getOrDefault(false)
+        }
+        composeRule.onNodeWithTag("movie_card_10").performClick()
+        composeRule.waitUntil(timeoutMillis = 30_000) {
+            runCatching { composeRule.onNodeWithTag("video_player_screen").fetchSemanticsNode(); true }.getOrDefault(false)
+        }
         composeRule.waitUntil(timeoutMillis = 120_000) {
             runCatching {
                 composeRule.onNodeWithTag("youtube_player_playing").fetchSemanticsNode()
