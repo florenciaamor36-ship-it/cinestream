@@ -31,10 +31,12 @@ jobs:
         env:
           ANDROID_I_WANT_MY_TCG: yes
         with:
-          api-level: 35
+          api-level: 30
           target: google_apis
           arch: x86_64
           profile: pixel_2
+          cores: 4
+          ram-size: 4096M
           disable-animations: true
           script: |
             timeout 240 sh -c 'until adb shell service check package 2>/dev/null | grep -q found && adb shell service check activity 2>/dev/null | grep -q found; do sleep 5; done'
