@@ -104,8 +104,6 @@ dependencies {
   implementation(libs.androidx.media3.ui)
   implementation(libs.androidx.media3.datasource.okhttp)
   implementation(libs.androidx.media3.common)
-  implementation(libs.mlkit.translate)
-  implementation(libs.mlkit.language.id)
   implementation(libs.converter.moshi)
   implementation(libs.firebase.ai)
   // Uncomment to use Firestore:

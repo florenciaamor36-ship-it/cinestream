@@ -1,15 +1,13 @@
 # CineStream
 
-CineStream opens directly to a Netflix-style browsing catalog—no sign-in, Telegram account, or VPS is required. Its bundled Internet Archive feature-films snapshot contains nearly all 29,634 search hits (some records tagged as explicit adult content are intentionally excluded).
+CineStream opens straight to a browsable catalog of full movies from curated YouTube playlists. It reads YouTube's public playlist RSS feeds, filters out trailers/clips and unrelated uploads, and only accepts entries published by the expected channel for each playlist. Playback uses the official YouTube embedded player inside the app—CineStream does not scrape direct media URLs, download, or rehost the video.
 
-The app keeps source titles and descriptions and offers an on-demand Spanish translation of an item's title and description using downloadable on-device ML Kit models; the original record stays available. Automatic translation can be imperfect. This translates catalog text only, never audio or subtitles. A language field means only that the Archive metadata lists it, not that the audio/subtitles have been checked.
+Current sources span Film&Clips (Spanish and 4K playlists), Vision Video, Lifted, Deep C Digital, and Mosfilm (Spanish-subtitled films). The public RSS feeds expose a limited recent subset, so the catalog is not a search over all YouTube. It refreshes when stale and caches results in memory for up to six hours.
 
-The source query returns mixed kinds of records and metadata quality varies. Archive's `year` field can be the record/upload year, not theatrical release year, and posters/metadata may be missing. The app presents it as a year indicated by the source.
+A public RSS entry and a successful embed page do not guarantee playback: a publisher can remove a film, restrict it by country/age, or disable embedding. YouTube decides availability. CineStream doesn't invent runtimes, release years, ratings, audio languages, or subtitle claims. The title and language details shown are what the channel publishes; Mosfilm's selected playlist advertises Spanish subtitles.
 
-CineStream only starts in-app video playback when the item currently declares Creative Commons Public Domain Mark 1.0, and then resolves an MP4 from its current metadata. This declaration is not independent legal verification. Items with other or no declared license remain in the catalog and link to the original record, but are not playable in-app. Individual availability/compatibility still needs testing.
-
-`app/src/main/assets/ia_catalog_v2.dat` holds the source snapshot. `tools/build_ia_catalog.py` uses the official Internet Archive cursor-based scraping API; `tools/validate_ia_catalog.py` validates the bundled catalog.
+`tools/validate_youtube_catalog.py` checks that the configured curated playlist IDs and publisher filters are present and that the old noisy Archive snapshot is gone.
 
 ## Build
 
-Build/test with `gradle :app:assembleDebug :app:testDebugUnitTest`. GitHub Actions also uploads the debug APK as an artifact for 14 days.
+Run `python3 tools/validate_youtube_catalog.py`, `gradle :app:assembleDebug :app:testDebugUnitTest`, or use GitHub Actions to build and download the debug APK.

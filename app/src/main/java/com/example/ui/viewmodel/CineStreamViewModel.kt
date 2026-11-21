@@ -47,7 +47,7 @@ data class CineStreamUiState(
 
 class CineStreamViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val repository = MovieRepository(application)
+    private val repository = MovieRepository()
 
     private val _uiState = MutableStateFlow(
         CineStreamUiState(
@@ -99,7 +99,7 @@ class CineStreamViewModel(application: Application) : AndroidViewModel(applicati
             val currentSearch = _uiState.value.searchQuery
             val result = repository.getMovies(currentGenre, currentSearch)
             result.onSuccess { list ->
-                val genres = repository.getArchiveGenres()
+                val genres = repository.getYouTubeGenres()
                 _uiState.update {
                     it.copy(
                         movies = list,
@@ -150,16 +150,7 @@ class CineStreamViewModel(application: Application) : AndroidViewModel(applicati
     }
 
     fun navigateToPlayer(movie: Movie) {
-        if (movie.archiveIdentifier.isBlank()) {
-            _uiState.update { it.copy(currentScreen = AppScreen.Player(movie)) }
-            return
-        }
-        viewModelScope.launch {
-            _uiState.update { it.copy(playbackLoading = true, playbackError = null) }
-            repository.resolveArchiveMovie(movie)
-                .onSuccess { resolved -> _uiState.update { it.copy(currentScreen = AppScreen.Player(resolved), playbackLoading = false) } }
-                .onFailure { error -> _uiState.update { it.copy(playbackLoading = false, playbackError = error.localizedMessage ?: "No pude resolver el video en Internet Archive") } }
-        }
+        _uiState.update { it.copy(currentScreen = AppScreen.Player(movie), playbackLoading = false, playbackError = null) }
     }
 
     fun dismissPlaybackError() { _uiState.update { it.copy(playbackError = null) } }

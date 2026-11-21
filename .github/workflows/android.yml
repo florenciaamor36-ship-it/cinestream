@@ -17,8 +17,8 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
-      - name: Validate bundled catalog
-        run: python3 tools/validate_ia_catalog.py
+      - name: Validate curated YouTube playlists
+        run: python3 tools/validate_youtube_catalog.py
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '9.3.1'

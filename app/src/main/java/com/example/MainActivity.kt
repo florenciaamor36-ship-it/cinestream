@@ -121,7 +121,7 @@ fun CineStreamApp(
                 androidx.compose.foundation.layout.Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
                     CircularProgressIndicator()
                     androidx.compose.foundation.layout.Spacer(Modifier.width(16.dp))
-                    Text("Comprobando archivo y derechos declarados en Internet Archive…")
+                    Text("Abriendo reproductor oficial de YouTube…")
                 }
             },
             confirmButton = {}

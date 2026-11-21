@@ -106,7 +106,7 @@ fun HomeScreen(
                     }
                 }
                 Text(
-                    text = "Cine, clásicos y más · fichas de Internet Archive",
+                    text = "Películas completas de canales de YouTube",
                     style = MaterialTheme.typography.labelSmall,
                     color = TextSecondary,
                     modifier = Modifier.padding(start = 56.dp, bottom = 6.dp)
@@ -168,7 +168,7 @@ fun HomeScreen(
                         OutlinedTextField(
                             value = uiState.searchQuery,
                             onValueChange = onSearchChange,
-                            placeholder = { Text("Buscar entre ${uiState.movies.size} títulos...", color = TextMuted) },
+                            placeholder = { Text("Buscar películas de YouTube...", color = TextMuted) },
                             leadingIcon = {
                                 Icon(Icons.Default.Search, contentDescription = null, tint = TextMuted)
                             },
@@ -396,8 +396,7 @@ fun HomeScreen(
                         HeroBillboard(
                             movie = featured,
                             onPlayClick = {
-                                if (featured.archiveIdentifier.isNotBlank() && featured.licenseUrl != "http://creativecommons.org/publicdomain/mark/1.0/") onMovieClick(featured)
-                                else onPlayMovie(featured)
+                                onPlayMovie(featured)
                             },
                             onInfoClick = { onMovieClick(featured) }
                         )
@@ -449,8 +448,7 @@ fun HomeScreen(
                         HeroBillboard(
                             movie = featured,
                             onPlayClick = {
-                                if (featured.archiveIdentifier.isNotBlank() && featured.licenseUrl != "http://creativecommons.org/publicdomain/mark/1.0/") onMovieClick(featured)
-                                else onPlayMovie(featured)
+                                onPlayMovie(featured)
                             },
                             onInfoClick = { onMovieClick(featured) }
                         )
@@ -501,7 +499,7 @@ fun HomeScreen(
             ) {
                 item {
                     Text(
-                        text = "${uiState.movies.size} títulos · años, idiomas y derechos son los que declara cada ficha",
+                        text = "${uiState.movies.size} títulos · Se actualizan desde listas de canales de YouTube",
                         style = MaterialTheme.typography.labelSmall,
                         color = TextSecondary,
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
@@ -514,8 +512,7 @@ fun HomeScreen(
                         HeroBillboard(
                             movie = featured,
                             onPlayClick = {
-                                if (featured.archiveIdentifier.isNotBlank() && featured.licenseUrl != "http://creativecommons.org/publicdomain/mark/1.0/") onMovieClick(featured)
-                                else onPlayMovie(featured)
+                                onPlayMovie(featured)
                             },
                             onInfoClick = { onMovieClick(featured) }
                         )
@@ -528,7 +525,7 @@ fun HomeScreen(
                     item {
                         MovieRowSection(
                             title = if (uiState.searchQuery.isBlank()) "Películas para descubrir" else "Resultados: ${allMoviesOnly.size}",
-                            badge = "ARCHIVO",
+                            badge = "YOUTUBE",
                             movies = if (uiState.searchQuery.isBlank()) allMoviesOnly.take(18) else allMoviesOnly,
                             onMovieClick = onMovieClick
                         )
@@ -632,7 +629,7 @@ private fun HeroBillboard(
                     shape = RoundedCornerShape(4.dp)
                 ) {
                     Text(
-                        text = if (movie.archiveIdentifier.isNotBlank()) "CINE DE ARCHIVO" else "DESTACADO",
+                        text = if (movie.streamUrl.contains("youtube.com/embed/")) "YOUTUBE" else "DESTACADO",
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.White,
@@ -644,9 +641,7 @@ private fun HeroBillboard(
                     shape = RoundedCornerShape(4.dp)
                 ) {
                     Text(
-                        text = if (movie.archiveIdentifier.isNotBlank()) {
-                            if (movie.licenseUrl == "http://creativecommons.org/publicdomain/mark/1.0/") "REVISAR DERECHOS" else "VER FICHA ORIGINAL"
-                        } else movie.quality,
+                        text = if (movie.streamUrl.contains("youtube.com/embed/")) "PELÍCULA COMPLETA" else movie.quality,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
                         color = BadgeTeal,
@@ -705,7 +700,7 @@ private fun HeroBillboard(
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = if (movie.archiveIdentifier.isNotBlank() && movie.licenseUrl != "http://creativecommons.org/publicdomain/mark/1.0/") "Ver ficha" else "Reproducir",
+                        text = "Reproducir",
                         color = Color.Black,
                         fontWeight = FontWeight.Bold,
                         fontSize = 15.sp
@@ -833,13 +828,8 @@ fun MovieCard(
                             fontWeight = FontWeight.Black,
                             color = Color.White
                         )
-                    } else if (movie.archiveIdentifier.isNotBlank()) {
-                        Text(
-                            if (movie.licenseUrl == "http://creativecommons.org/publicdomain/mark/1.0/") "REVISAR" else "VER FICHA",
-                            fontSize = 9.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
-                        )
+                    } else if (movie.streamUrl.contains("youtube.com/embed/")) {
+                        Text("YOUTUBE", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color.White)
                     } else if (movie.rating >= 0.0) {
                         Text("★ ${movie.rating}", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = RatingGold)
                     }
