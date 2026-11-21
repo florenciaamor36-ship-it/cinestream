@@ -1,5 +1,6 @@
 package com.example.data.repository
 
+import android.content.Context
 import com.example.data.model.Movie
 import com.example.data.model.ServerStatusResponse
 import com.example.data.network.CineStreamApi
@@ -9,10 +10,10 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
-class MovieRepository {
+class MovieRepository(context: Context) {
 
-    private val youtubeMoviesCatalog = YouTubeMoviesCatalog()
-    @Volatile private var cachedYouTubeMovies: List<Movie>? = null
+    private val youtubeMoviesCatalog = YouTubeMoviesCatalog(context.applicationContext)
+    @Volatile private var cachedYouTubeMovies: List<Movie> = youtubeMoviesCatalog.loadBundled()
     @Volatile private var catalogFetchedAtMs: Long = 0L
     private val catalogLock = Mutex()
     private val catalogCacheTtlMs = 6 * 60 * 60 * 1000L
@@ -23,36 +24,35 @@ class MovieRepository {
     }
 
     suspend fun getMovies(genre: String? = null, search: String? = null): Result<List<Movie>> = withContext(Dispatchers.IO) {
-        runCatching {
-            val all = loadYouTubeMovies()
-            all.asSequence()
-                .filter { genre.isNullOrBlank() || genre.equals("Todos", true) || it.genre.equals(genre, true) }
-                .filter {
-                    search.isNullOrBlank() || it.title.contains(search, true) ||
-                        it.synopsis.contains(search, true) || it.creator.contains(search, true)
-                }
-                .toList()
-        }
+        runCatching { filterMovies(cachedYouTubeMovies, genre, search) }
     }
 
     suspend fun getYouTubeGenres(): List<String> = withContext(Dispatchers.IO) {
-        loadYouTubeMovies().map { it.genre }.distinct().sorted()
+        cachedYouTubeMovies.map { it.genre }.distinct().sorted()
     }
 
-    private suspend fun loadYouTubeMovies(): List<Movie> = catalogLock.withLock {
-        val cached = cachedYouTubeMovies
-        val fresh = System.currentTimeMillis() - catalogFetchedAtMs < catalogCacheTtlMs
-        if (cached != null && fresh) return@withLock cached
-        try {
-            val current = youtubeMoviesCatalog.load()
-            check(current.isNotEmpty()) { "No encontré películas completas disponibles en las listas de YouTube." }
-            cachedYouTubeMovies = current
-            catalogFetchedAtMs = System.currentTimeMillis()
-            current
-        } catch (error: Exception) {
-            if (cached != null) cached else throw error
+    suspend fun refreshYouTubeMovies(): Result<List<Movie>> = withContext(Dispatchers.IO) {
+        catalogLock.withLock {
+            val isFresh = System.currentTimeMillis() - catalogFetchedAtMs < catalogCacheTtlMs
+            if (isFresh) return@withLock Result.success(cachedYouTubeMovies)
+            runCatching {
+                val refreshed = youtubeMoviesCatalog.load()
+                check(refreshed.isNotEmpty()) { "YouTube no devolvió películas completas." }
+                cachedYouTubeMovies = refreshed
+                catalogFetchedAtMs = System.currentTimeMillis()
+                refreshed
+            }
         }
     }
+
+    private fun filterMovies(all: List<Movie>, genre: String?, search: String?): List<Movie> =
+        all.asSequence()
+            .filter { genre.isNullOrBlank() || genre.equals("Todos", true) || it.genre.equals(genre, true) }
+            .filter {
+                search.isNullOrBlank() || it.title.contains(search, true) ||
+                    it.synopsis.contains(search, true) || it.creator.contains(search, true)
+            }
+            .toList()
 
     suspend fun getLiveChannels(category: String = "Todos"): Result<List<Movie>> = withContext(Dispatchers.IO) {
         try {

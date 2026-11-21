@@ -1,15 +1,19 @@
 package com.example.data.repository
 
+import android.content.Context
 import com.example.data.model.Movie
 import okhttp3.Request
+import org.json.JSONObject
 import org.w3c.dom.Element
 import java.io.ByteArrayInputStream
+import java.io.IOException
 import java.net.URLEncoder
 import java.util.Locale
+import java.util.concurrent.TimeUnit
 import javax.xml.parsers.DocumentBuilderFactory
 
 /** A small, refreshable catalog of full movies published in YouTube playlists by their channels. */
-internal class YouTubeMoviesCatalog {
+internal class YouTubeMoviesCatalog(private val context: Context) {
     internal data class PlaylistSource(val name: String, val playlistId: String, val publisherMarker: String)
 
     companion object {
@@ -24,8 +28,8 @@ internal class YouTubeMoviesCatalog {
             PlaylistSource("Mosfilm · Largometrajes con subtítulos en español", "PL7EqAsBxqGgiclckrDzyS9hYtGpIKEngQ", "Mosfilm")
         )
 
-        private const val YOUTUBE_EMBED = "https://www.youtube.com/embed/"
-        private const val YOUTUBE_WATCH = "https://www.youtube.com/watch?v="
+        private const val YOUTUBE_EMBED = "https://www.youtube-nocookie.com/embed/"
+        private const val YOUTUBE_WATCH = "https://youtube.com/watch?v="
         private const val ATOM_NS = "http://www.w3.org/2005/Atom"
         private const val YT_NS = "http://www.youtube.com/xml/schemas/2015"
         private const val MEDIA_NS = "http://search.yahoo.com/mrss/"
@@ -102,16 +106,53 @@ internal class YouTubeMoviesCatalog {
         }
     }
 
+    fun loadBundled(): List<Movie> {
+        val root = context.assets.open("youtube_movies_seed.json").bufferedReader().use { JSONObject(it.readText()) }
+        val items = root.getJSONArray("items")
+        return buildList(items.length()) {
+            for (index in 0 until items.length()) {
+                val item = items.getJSONObject(index)
+                add(
+                    Movie(
+                        id = item.optInt("id", index + 1),
+                        title = item.optString("title"),
+                        synopsis = item.optString("synopsis"),
+                        posterUrl = item.optString("posterUrl"),
+                        backdropUrl = item.optString("backdropUrl"),
+                        genre = item.optString("genre", "Drama"),
+                        durationMin = item.optInt("durationMin", 0),
+                        releaseYear = item.optInt("releaseYear", 0),
+                        rating = item.optDouble("rating", -1.0),
+                        quality = item.optString("quality", "YouTube"),
+                        sizeBytes = item.optLong("sizeBytes", 0L),
+                        isFeatured = item.optBoolean("isFeatured", false),
+                        streamUrl = item.optString("streamUrl"),
+                        isLive = item.optBoolean("isLive", false),
+                        isSeries = item.optBoolean("isSeries", false),
+                        seasons = item.optInt("seasons", 1),
+                        episodesCount = item.optInt("episodesCount", 10),
+                        sourceId = item.optInt("sourceId", 0),
+                        creator = item.optString("creator"),
+                        sourceUrl = item.optString("sourceUrl")
+                    )
+                )
+            }
+        }
+    }
+
     fun load(): List<Movie> {
         val client = com.example.data.network.NetworkClient.okHttpClient
+            .newBuilder()
+            .callTimeout(8, TimeUnit.SECONDS)
+            .build()
         val movies = LinkedHashMap<String, Movie>()
         var lastError: Exception? = null
         for (source in sources) {
             try {
                 val playlist = URLEncoder.encode(source.playlistId, "UTF-8")
                 val request = Request.Builder()
-                    .url("https://www.youtube.com/feeds/videos.xml?playlist_id=$playlist")
-                    .header("User-Agent", "CineStream Android app")
+                    .url("https://youtube.com/feeds/videos.xml?playlist_id=$playlist")
+                    .header("User-Agent", "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 Chrome/131.0 Mobile Safari/537.36")
                     .build()
                 client.newCall(request).execute().use { response ->
                     check(response.isSuccessful) { "No pude leer la lista ${source.name} (HTTP ${response.code})" }
@@ -124,6 +165,7 @@ internal class YouTubeMoviesCatalog {
             } catch (error: Exception) {
                 lastError = error
                 android.util.Log.w("YouTubeMoviesCatalog", "Omití una lista temporalmente inaccesible: ${source.name}", error)
+                if (error is IOException) break
             }
         }
         if (movies.isEmpty()) throw lastError ?: IllegalStateException("Las listas de películas de YouTube no devolvieron videos.")

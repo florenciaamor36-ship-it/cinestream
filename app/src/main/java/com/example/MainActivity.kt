@@ -90,7 +90,7 @@ fun CineStreamApp(
                     onGenreSelect = { genre -> viewModel.onGenreSelected(genre) },
                     onSearchChange = { query -> viewModel.onSearchQueryChanged(query) },
                     onOpenServerConfig = {},
-                    onRefresh = { viewModel.refreshCatalog() },
+                    onRefresh = { viewModel.refreshCatalog(refreshOnline = true) },
                     onSelectTab = { tab -> viewModel.selectTab(tab) },
                     onLiveCategorySelect = { cat -> viewModel.onLiveCategorySelected(cat) }
                 )

@@ -1,12 +1,14 @@
 package com.example.ui.screens
 
-import android.content.Context
+import android.content.Intent
 import android.net.Uri
 import android.view.ViewGroup
 import android.webkit.WebChromeClient
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.webkit.WebResourceRequest
+import android.webkit.WebResourceError
 import android.widget.FrameLayout
 import androidx.annotation.OptIn
 import androidx.compose.animation.*
@@ -63,9 +65,12 @@ fun PlayerScreen(
     var bufferedPositionMs by remember { mutableLongStateOf(0L) }
     var showControls by remember { mutableStateOf(true) }
     var playbackError by remember { mutableStateOf<String?>(null) }
+    var youtubePlaybackError by remember { mutableStateOf(false) }
+    var youtubePageLoaded by remember { mutableStateOf(false) }
+    var youtubeWebView by remember { mutableStateOf<WebView?>(null) }
     var isMuted by remember { mutableStateOf(false) }
 
-    val isYouTubeEmbed = movie.streamUrl.contains("youtube.com/embed")
+    val isYouTubeEmbed = movie.streamUrl.contains("/embed/") && movie.streamUrl.contains("youtube")
 
     // Inicializar ExoPlayer con CacheDataSource para VOD o LiveDataSource para HLS (solo si no es YouTube embed)
     val exoPlayer = remember(movie.id, movie.streamUrl) {
@@ -175,38 +180,6 @@ fun PlayerScreen(
     ) {
         // Vista de Video: YouTube WebView nativo o Media3 / ExoPlayer
         if (isYouTubeEmbed) {
-            val embedUrl = if (movie.streamUrl.contains("origin=")) {
-                movie.streamUrl
-            } else {
-                "${movie.streamUrl}&origin=https://www.youtube.com"
-            }
-
-            val htmlData = """
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-                    <style>
-                        html, body {
-                            margin: 0; padding: 0; width: 100%; height: 100%; background: #000; overflow: hidden;
-                        }
-                        iframe {
-                            width: 100%; height: 100%; border: none;
-                        }
-                    </style>
-                </head>
-                <body>
-                    <iframe 
-                        id="player"
-                        src="$embedUrl" 
-                        allow="autoplay; encrypted-media; picture-in-picture" 
-                        referrerpolicy="no-referrer-when-downgrade"
-                        allowfullscreen>
-                    </iframe>
-                </body>
-                </html>
-            """.trimIndent()
-
             AndroidView(
                 factory = { ctx ->
                     WebView(ctx).apply {
@@ -219,13 +192,67 @@ fun PlayerScreen(
                         settings.mediaPlaybackRequiresUserGesture = false
                         settings.loadWithOverviewMode = true
                         settings.useWideViewPort = true
+                        settings.mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
                         webChromeClient = WebChromeClient()
-                        webViewClient = WebViewClient()
-                        loadDataWithBaseURL("https://www.youtube.com", htmlData, "text/html", "UTF-8", null)
+                        webViewClient = object : WebViewClient() {
+                            override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
+                                youtubePlaybackError = false
+                                youtubePageLoaded = false
+                                isBuffering = true
+                            }
+
+                            override fun onPageFinished(view: WebView?, url: String?) {
+                                youtubePageLoaded = !youtubePlaybackError
+                                isBuffering = false
+                            }
+
+                            override fun onReceivedError(
+                                view: WebView?,
+                                request: WebResourceRequest?,
+                                error: WebResourceError?
+                            ) {
+                                if (request?.isForMainFrame == true) {
+                                    youtubePlaybackError = true
+                                    youtubePageLoaded = false
+                                    isBuffering = false
+                                }
+                            }
+
+                            override fun onReceivedHttpError(
+                                view: WebView?,
+                                request: WebResourceRequest?,
+                                errorResponse: android.webkit.WebResourceResponse?
+                            ) {
+                                if (request?.isForMainFrame == true && (errorResponse?.statusCode ?: 200) >= 400) {
+                                    youtubePlaybackError = true
+                                    youtubePageLoaded = false
+                                    isBuffering = false
+                                }
+                            }
+                        }
+                        youtubeWebView = this
+                        tag = movie.streamUrl
+                        loadUrl(movie.streamUrl)
                     }
                 },
-                modifier = Modifier.fillMaxSize()
+                update = { view ->
+                    youtubeWebView = view
+                    if (view.tag as? String != movie.streamUrl) {
+                        youtubePlaybackError = false
+                        youtubePageLoaded = false
+                        view.tag = movie.streamUrl
+                        view.loadUrl(movie.streamUrl)
+                    }
+                },
+                modifier = Modifier.fillMaxSize().testTag(if (youtubePageLoaded) "youtube_player_loaded" else "youtube_player_loading")
             )
+            DisposableEffect(movie.streamUrl) {
+                onDispose {
+                    youtubeWebView?.stopLoading()
+                    youtubeWebView?.destroy()
+                    youtubeWebView = null
+                }
+            }
         } else {
             AndroidView(
                 factory = { ctx ->
@@ -251,7 +278,7 @@ fun PlayerScreen(
 
         // Overlay de Controles Modernos
         AnimatedVisibility(
-            visible = showControls || isBuffering || playbackError != null,
+            visible = showControls || isBuffering || playbackError != null || youtubePlaybackError,
             enter = fadeIn(),
             exit = fadeOut(),
             modifier = Modifier.fillMaxSize()
@@ -318,7 +345,7 @@ fun PlayerScreen(
                                     modifier = Modifier.padding(end = 6.dp)
                                 ) {
                                     Text(
-                                        text = "WORKER POOL",
+                                        text = if (isYouTubeEmbed) "YOUTUBE" else "EN LÍNEA",
                                         fontSize = 9.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = Color.White,
@@ -326,7 +353,7 @@ fun PlayerScreen(
                                     )
                                 }
                                 Text(
-                                    text = "Stream HTTP Range • Caché SimpleCache Activa",
+                                    text = if (isYouTubeEmbed) "Reproductor oficial de YouTube" else "Reproducción de video",
                                     fontSize = 11.sp,
                                     color = TextSecondary
                                 )
@@ -428,6 +455,34 @@ fun PlayerScreen(
                                 tint = Color.White,
                                 modifier = Modifier.size(32.dp)
                             )
+                        }
+                    }
+                }
+
+                if (youtubePlaybackError) {
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = DarkSurfaceElevated.copy(alpha = 0.96f)),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.align(Alignment.Center).padding(24.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(18.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Icon(Icons.Default.ErrorOutline, contentDescription = null, tint = NetflixRed, modifier = Modifier.size(36.dp))
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text("No pude conectar con YouTube. Revisá la conexión a Internet o la configuración DNS del teléfono.", color = Color.White, fontSize = 14.sp)
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Button(
+                                onClick = {
+                                    youtubePlaybackError = false
+                                    youtubeWebView?.reload()
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = NetflixRed)
+                            ) { Text("Reintentar") }
+                            TextButton(onClick = {
+                                runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(movie.sourceUrl))) }
+                            }) { Text("Probar en YouTube", color = Color.White) }
                         }
                     }
                 }

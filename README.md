@@ -1,13 +1,13 @@
 # CineStream
 
-CineStream opens straight to a browsable catalog of full movies from curated YouTube playlists. It reads YouTube's public playlist RSS feeds, filters out trailers/clips and unrelated uploads, and only accepts entries published by the expected channel for each playlist. Playback uses the official YouTube embedded player inside the app—CineStream does not scrape direct media URLs, download, or rehost the video.
+CineStream opens directly to a catalog of full movies selected from curated YouTube playlists. The app now bundles a small snapshot of 62 current playlist entries that matched the full-movie title and publisher filters, so the titles are visible even when YouTube's feed cannot be resolved; a successful refresh replaces the snapshot with current entries. It filters out trailers/clips and accepts items only when the RSS author matches the expected publisher.
 
-Current sources span Film&Clips (Spanish and 4K playlists), Vision Video, Lifted, Deep C Digital, and Mosfilm (Spanish-subtitled films). The public RSS feeds expose a limited recent subset, so the catalog is not a search over all YouTube. It refreshes when stale and caches results in memory for up to six hours.
+Playback uses YouTube's official embedded player at `www.youtube-nocookie.com`; CineStream does not scrape direct media URLs, download, or rehost the video. YouTube playback still requires Internet access and may fail for region, age, publisher, or DNS/network restrictions. A bundled title list is not an offline video download. When the embed cannot load, the player shows a retry message and a button to open the YouTube watch page.
 
-A public RSS entry and a successful embed page do not guarantee playback: a publisher can remove a film, restrict it by country/age, or disable embedding. YouTube decides availability. CineStream doesn't invent runtimes, release years, ratings, audio languages, or subtitle claims. The title and language details shown are what the channel publishes; Mosfilm's selected playlist advertises Spanish subtitles.
+Current sources span Film&Clips (Spanish and 4K playlists), Vision Video, Lifted, Deep C Digital, and Mosfilm (a playlist advertised with Spanish subtitles). YouTube's public RSS feeds expose only recent playlist entries, so this is not a search across all YouTube. The app does not invent runtimes, release years, ratings, audio languages, or subtitles.
 
-`tools/validate_youtube_catalog.py` checks that the configured curated playlist IDs and publisher filters are present and that the old noisy Archive snapshot is gone.
+`tools/validate_youtube_catalog.py` validates the curated playlists, fallback list, video IDs and player domains. CI builds the app and runs unit tests. A separate Android WebView instrumentation smoke test checks the embedded player page on an emulator.
 
 ## Build
 
-Run `python3 tools/validate_youtube_catalog.py`, `gradle :app:assembleDebug :app:testDebugUnitTest`, or use GitHub Actions to build and download the debug APK.
+Run `python3 tools/validate_youtube_catalog.py`, `gradle :app:assembleDebug :app:testDebugUnitTest`, or use GitHub Actions to build the debug APK.

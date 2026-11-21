@@ -47,7 +47,7 @@ data class CineStreamUiState(
 
 class CineStreamViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val repository = MovieRepository()
+    private val repository = MovieRepository(application)
 
     private val _uiState = MutableStateFlow(
         CineStreamUiState(
@@ -57,7 +57,7 @@ class CineStreamViewModel(application: Application) : AndroidViewModel(applicati
     val uiState: StateFlow<CineStreamUiState> = _uiState.asStateFlow()
 
     init {
-        refreshCatalog()
+        refreshCatalog(refreshOnline = true)
         updateCacheSize()
     }
 
@@ -92,28 +92,36 @@ class CineStreamViewModel(application: Application) : AndroidViewModel(applicati
         }
     }
 
-    fun refreshCatalog() {
+    fun refreshCatalog(refreshOnline: Boolean = false) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
-            val currentGenre = _uiState.value.selectedGenre
-            val currentSearch = _uiState.value.searchQuery
-            val result = repository.getMovies(currentGenre, currentSearch)
-            result.onSuccess { list ->
-                val genres = repository.getYouTubeGenres()
-                _uiState.update {
-                    it.copy(
-                        movies = list,
-                        liveChannels = emptyList(),
-                        liveChannelsByCategory = emptyMap(),
-                        availableGenres = listOf("Todos") + genres,
-                        featuredMovie = list.firstOrNull { it.posterUrl.isNotBlank() } ?: list.firstOrNull(),
-                        isLoading = false,
-                        errorMessage = null
-                    )
-                }
-            }.onFailure { err ->
-                _uiState.update { it.copy(movies = emptyList(), isLoading = false, errorMessage = err.localizedMessage ?: "No pude cargar el catálogo") }
+            publishCachedCatalog(isLoading = refreshOnline)
+            if (refreshOnline) {
+                // Keep the bundled catalogue visible while network updates are attempted.
+                repository.refreshYouTubeMovies()
+                publishCachedCatalog(isLoading = false)
             }
+        }
+    }
+
+    private suspend fun publishCachedCatalog(isLoading: Boolean) {
+        val current = _uiState.value
+        val result = repository.getMovies(current.selectedGenre, current.searchQuery)
+        val genres = repository.getYouTubeGenres()
+        result.onSuccess { list ->
+            _uiState.update {
+                it.copy(
+                    movies = list,
+                    liveChannels = emptyList(),
+                    liveChannelsByCategory = emptyMap(),
+                    availableGenres = listOf("Todos") + genres,
+                    featuredMovie = list.firstOrNull { movie -> movie.posterUrl.isNotBlank() } ?: list.firstOrNull(),
+                    isLoading = isLoading,
+                    errorMessage = null
+                )
+            }
+        }.onFailure { err ->
+            _uiState.update { it.copy(movies = emptyList(), isLoading = false, errorMessage = err.localizedMessage ?: "No pude cargar el catálogo guardado") }
         }
     }
 
