@@ -6,7 +6,6 @@ import org.w3c.dom.Element
 import java.io.ByteArrayInputStream
 import java.net.URLEncoder
 import java.util.Locale
-import javax.xml.XMLConstants
 import javax.xml.parsers.DocumentBuilderFactory
 
 /** A small, refreshable catalog of full movies published in YouTube playlists by their channels. */
@@ -38,16 +37,14 @@ internal class YouTubeMoviesCatalog {
         internal fun parseFeed(xml: String, source: PlaylistSource): List<Movie> {
             val factory = DocumentBuilderFactory.newInstance().apply {
                 isNamespaceAware = true
-                runCatching { setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true) }
+                runCatching { setFeature("http://javax.xml.XMLConstants/feature/secure-processing", true) }
                 runCatching { setFeature("http://apache.org/xml/features/disallow-doctype-decl", true) }
                 runCatching { setFeature("http://xml.org/sax/features/external-general-entities", false) }
                 runCatching { setFeature("http://xml.org/sax/features/external-parameter-entities", false) }
-                runCatching { setAttribute(XMLConstants.ACCESS_EXTERNAL_DTD, "") }
-                runCatching { setAttribute(XMLConstants.ACCESS_EXTERNAL_SCHEMA, "") }
             }
             val doc = factory.newDocumentBuilder().parse(ByteArrayInputStream(xml.toByteArray(Charsets.UTF_8)))
             val entries = doc.getElementsByTagNameNS(ATOM_NS, "entry")
-            buildList {
+            return buildList {
                 for (i in 0 until entries.length) {
                     val entry = entries.item(i) as? Element ?: continue
                     val id = entry.firstText(YT_NS, "videoId").trim()
