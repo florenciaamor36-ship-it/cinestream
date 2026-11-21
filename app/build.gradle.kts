@@ -134,6 +134,8 @@ dependencies {
   testImplementation(libs.roborazzi.compose)
   testImplementation(libs.roborazzi.junit.rule)
   androidTestImplementation(platform(libs.androidx.compose.bom))
+  // AndroidX test runner uses Kotlin internals at runtime; debug R8 can strip them from the app APK.
+  androidTestImplementation("org.jetbrains.kotlin:kotlin-stdlib:2.2.10")
   androidTestImplementation(libs.androidx.compose.ui.test.junit4)
   androidTestImplementation(libs.androidx.espresso.core)
   androidTestImplementation(libs.androidx.junit)
