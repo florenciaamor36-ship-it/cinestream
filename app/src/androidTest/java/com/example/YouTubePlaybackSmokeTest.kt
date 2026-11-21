@@ -1,11 +1,9 @@
 package com.example
 
-import androidx.compose.ui.test.assertExists
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.waitUntil
 import androidx.test.core.app.ApplicationProvider
 import android.content.Context
 import com.example.MainActivity
@@ -33,18 +31,18 @@ class YouTubePlaybackSmokeTest {
     fun appOpensMovieAndLoadsOfficialYoutubeEmbedPage() {
         composeRule.waitUntil(timeoutMillis = 60_000) {
             runCatching {
-                composeRule.onNodeWithText("Ana Karénina. La historia de Vrónski", substring = true).assertExists()
-                composeRule.onNodeWithTag("hero_play_button").assertExists()
+                composeRule.onNodeWithText("Ana Karénina. La historia de Vrónski", substring = true).fetchSemanticsNode()
+                composeRule.onNodeWithTag("hero_play_button").fetchSemanticsNode()
                 true
             }.getOrDefault(false)
         }
         composeRule.onNodeWithTag("hero_play_button").performClick()
         composeRule.waitUntil(timeoutMillis = 120_000) {
             runCatching {
-                composeRule.onNodeWithTag("youtube_player_playing").assertExists()
+                composeRule.onNodeWithTag("youtube_player_playing").fetchSemanticsNode()
                 true
             }.getOrDefault(false)
         }
-        composeRule.onNodeWithTag("youtube_player_playing").assertExists()
+        composeRule.onNodeWithTag("youtube_player_playing").fetchSemanticsNode()
     }
 }
