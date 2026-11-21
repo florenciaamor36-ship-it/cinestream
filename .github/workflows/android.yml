@@ -39,7 +39,7 @@ jobs:
           ram-size: 2048M
           disable-animations: true
           script: |
-            timeout 300 sh -c 'ok=0; while [ "$ok" -lt 3 ]; do sdk=$(adb shell getprop ro.build.version.sdk 2>/dev/null | tr -d "\r"); boot=$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d "\r"); packages=$(adb shell cmd package list packages 2>/dev/null | head -1); activity=$(adb shell cmd activity get-current-user 2>/dev/null | tr -d "\r"); if [ "$sdk" -ge 30 ] 2>/dev/null && [ "$boot" = 1 ] && [ -n "$packages" ] && [ "$activity" = 0 ]; then ok=$((ok+1)); else ok=0; fi; sleep 10; done'
+            sleep 30
             gradle :app:connectedDebugAndroidTest --no-daemon
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
