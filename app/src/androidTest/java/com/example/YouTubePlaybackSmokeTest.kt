@@ -44,6 +44,10 @@ class YouTubePlaybackSmokeTest {
         }
         composeRule.onNodeWithTag("movie_card_10").performClick()
         composeRule.waitUntil(timeoutMillis = 30_000) {
+            runCatching { composeRule.onNodeWithTag("detail_play_button").fetchSemanticsNode(); true }.getOrDefault(false)
+        }
+        composeRule.onNodeWithTag("detail_play_button").performClick()
+        composeRule.waitUntil(timeoutMillis = 30_000) {
             runCatching { composeRule.onNodeWithTag("video_player_screen").fetchSemanticsNode(); true }.getOrDefault(false)
         }
         composeRule.waitUntil(timeoutMillis = 120_000) {
