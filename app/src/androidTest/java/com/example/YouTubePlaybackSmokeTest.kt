@@ -31,7 +31,7 @@ class YouTubePlaybackSmokeTest {
     fun appOpensMovieAndLoadsOfficialYoutubeEmbedPage() {
         composeRule.waitUntil(timeoutMillis = 60_000) {
             runCatching {
-                composeRule.onNodeWithText("Ana Karénina. La historia de Vrónski", substring = true).fetchSemanticsNode()
+                // The home hero can be any current first item after RSS refresh; assert the play action, not a fixed title.
                 composeRule.onNodeWithTag("hero_play_button").fetchSemanticsNode()
                 true
             }.getOrDefault(false)
