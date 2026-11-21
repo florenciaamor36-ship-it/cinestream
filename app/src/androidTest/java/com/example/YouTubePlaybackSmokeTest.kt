@@ -1,6 +1,5 @@
 package com.example
 
-import androidx.compose.ui.test.assertDoesNotExist
 import androidx.compose.ui.test.assertExists
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -16,7 +15,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
-/** Exercises the real app navigation and waits for its embedded YouTube WebView page to finish loading. */
+/** Exercises app navigation and waits for YouTube's IFrame API to report actual PLAYING state. */
 class YouTubePlaybackSmokeTest {
     @get:Rule
     val composeRule = createAndroidComposeRule<MainActivity>()
@@ -40,14 +39,12 @@ class YouTubePlaybackSmokeTest {
             }.getOrDefault(false)
         }
         composeRule.onNodeWithTag("hero_play_button").performClick()
-        composeRule.waitUntil(timeoutMillis = 60_000) {
+        composeRule.waitUntil(timeoutMillis = 120_000) {
             runCatching {
-                composeRule.onNodeWithTag("youtube_player_loaded").assertExists()
+                composeRule.onNodeWithTag("youtube_player_playing").assertExists()
                 true
             }.getOrDefault(false)
         }
-        composeRule.onNodeWithTag("youtube_player_loaded").assertExists()
-        composeRule.onNodeWithText("Reproductor oficial de YouTube").assertExists()
-        composeRule.onNodeWithText("No pude conectar con YouTube").assertDoesNotExist()
+        composeRule.onNodeWithTag("youtube_player_playing").assertExists()
     }
 }

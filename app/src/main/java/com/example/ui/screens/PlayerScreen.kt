@@ -8,6 +8,9 @@ import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.webkit.WebResourceRequest
+import android.webkit.JavascriptInterface
+import android.os.Handler
+import android.os.Looper
 import android.webkit.WebResourceError
 import android.widget.FrameLayout
 import androidx.annotation.OptIn
@@ -67,7 +70,48 @@ fun PlayerScreen(
     var playbackError by remember { mutableStateOf<String?>(null) }
     var youtubePlaybackError by remember { mutableStateOf(false) }
     var youtubePageLoaded by remember { mutableStateOf(false) }
+    var youtubePlaybackStarted by remember { mutableStateOf(false) }
+    var youtubeErrorMessage by remember { mutableStateOf("YouTube no pudo iniciar este video.") }
     var youtubeWebView by remember { mutableStateOf<WebView?>(null) }
+    val mainHandler = remember { Handler(Looper.getMainLooper()) }
+    val youtubeBridge = remember(movie.streamUrl) {
+        object {
+            @JavascriptInterface
+            fun onPlayerReady() {
+                mainHandler.post {
+                    youtubePageLoaded = true
+                    youtubePlaybackError = false
+                }
+            }
+
+            @JavascriptInterface
+            fun onPlayerPlaying() {
+                mainHandler.post {
+                    youtubePageLoaded = true
+                    youtubePlaybackStarted = true
+                    youtubePlaybackError = false
+                    isBuffering = false
+                }
+            }
+
+            @JavascriptInterface
+            fun onPlayerError(code: Int) {
+                mainHandler.post {
+                    youtubeErrorMessage = when (code) {
+                        2 -> "El identificador del video no es válido."
+                        5 -> "Este video no se puede reproducir en el reproductor integrado."
+                        100 -> "El canal retiró este video o ya no está disponible."
+                        101, 150 -> "El canal no permite reproducir este video dentro de CineStream."
+                        153 -> "YouTube rechazó el reproductor por falta de un origen válido."
+                        else -> "YouTube informó un error de reproducción ($code)."
+                    }
+                    youtubePlaybackError = true
+                    youtubePageLoaded = false
+                    isBuffering = false
+                }
+            }
+        }
+    }
     var isMuted by remember { mutableStateOf(false) }
 
     val isYouTubeEmbed = movie.streamUrl.contains("/embed/") && movie.streamUrl.contains("youtube")
@@ -171,6 +215,7 @@ fun PlayerScreen(
             .fillMaxSize()
             .background(Color.Black)
             .clickable(
+                enabled = !isYouTubeEmbed,
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null
             ) {
@@ -180,6 +225,34 @@ fun PlayerScreen(
     ) {
         // Vista de Video: YouTube WebView nativo o Media3 / ExoPlayer
         if (isYouTubeEmbed) {
+            val videoId = Uri.parse(movie.streamUrl).lastPathSegment.orEmpty()
+            val youtubeHtml = remember(movie.streamUrl) {
+                """
+                <!doctype html>
+                <html><head>
+                  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+                  <meta name="referrer" content="strict-origin">
+                  <style>html,body,#player{margin:0;width:100%;height:100%;background:#000;overflow:hidden}</style>
+                </head><body>
+                  <div id="player"></div>
+                  <script>
+                    var player;
+                    function onYouTubeIframeAPIReady() {
+                      player = new YT.Player('player', {
+                        width: '100%', height: '100%', videoId: '$videoId',
+                        playerVars: {playsinline: 1, rel: 0, autoplay: 1, origin: 'https://www.youtube.com'},
+                        events: {
+                          onReady: function(e) { AndroidBridge.onPlayerReady(); e.target.playVideo(); },
+                          onStateChange: function(e) { if (e.data === YT.PlayerState.PLAYING) AndroidBridge.onPlayerPlaying(); },
+                          onError: function(e) { AndroidBridge.onPlayerError(e.data); }
+                        }
+                      });
+                    }
+                  </script>
+                  <script src="https://www.youtube.com/iframe_api"></script>
+                </body></html>
+                """.trimIndent()
+            }
             AndroidView(
                 factory = { ctx ->
                     WebView(ctx).apply {
@@ -193,17 +266,14 @@ fun PlayerScreen(
                         settings.loadWithOverviewMode = true
                         settings.useWideViewPort = true
                         settings.mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
+                        addJavascriptInterface(youtubeBridge, "AndroidBridge")
                         webChromeClient = WebChromeClient()
                         webViewClient = object : WebViewClient() {
                             override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
                                 youtubePlaybackError = false
                                 youtubePageLoaded = false
+                                youtubePlaybackStarted = false
                                 isBuffering = true
-                            }
-
-                            override fun onPageFinished(view: WebView?, url: String?) {
-                                youtubePageLoaded = !youtubePlaybackError
-                                isBuffering = false
                             }
 
                             override fun onReceivedError(
@@ -212,18 +282,7 @@ fun PlayerScreen(
                                 error: WebResourceError?
                             ) {
                                 if (request?.isForMainFrame == true) {
-                                    youtubePlaybackError = true
-                                    youtubePageLoaded = false
-                                    isBuffering = false
-                                }
-                            }
-
-                            override fun onReceivedHttpError(
-                                view: WebView?,
-                                request: WebResourceRequest?,
-                                errorResponse: android.webkit.WebResourceResponse?
-                            ) {
-                                if (request?.isForMainFrame == true && (errorResponse?.statusCode ?: 200) >= 400) {
+                                    youtubeErrorMessage = "No pude conectar con YouTube. Revisá la conexión o el DNS del teléfono."
                                     youtubePlaybackError = true
                                     youtubePageLoaded = false
                                     isBuffering = false
@@ -232,7 +291,7 @@ fun PlayerScreen(
                         }
                         youtubeWebView = this
                         tag = movie.streamUrl
-                        loadUrl(movie.streamUrl)
+                        loadDataWithBaseURL("https://www.youtube.com/", youtubeHtml, "text/html", "UTF-8", null)
                     }
                 },
                 update = { view ->
@@ -240,11 +299,18 @@ fun PlayerScreen(
                     if (view.tag as? String != movie.streamUrl) {
                         youtubePlaybackError = false
                         youtubePageLoaded = false
+                        youtubePlaybackStarted = false
                         view.tag = movie.streamUrl
-                        view.loadUrl(movie.streamUrl)
+                        view.loadDataWithBaseURL("https://www.youtube.com/", youtubeHtml, "text/html", "UTF-8", null)
                     }
                 },
-                modifier = Modifier.fillMaxSize().testTag(if (youtubePageLoaded) "youtube_player_loaded" else "youtube_player_loading")
+                modifier = Modifier.fillMaxSize().testTag(
+                    when {
+                        youtubePlaybackStarted -> "youtube_player_playing"
+                        youtubePageLoaded -> "youtube_player_ready"
+                        else -> "youtube_player_loading"
+                    }
+                )
             )
             DisposableEffect(movie.streamUrl) {
                 onDispose {
@@ -278,7 +344,7 @@ fun PlayerScreen(
 
         // Overlay de Controles Modernos
         AnimatedVisibility(
-            visible = showControls || isBuffering || playbackError != null || youtubePlaybackError,
+            visible = if (isYouTubeEmbed) youtubePlaybackError else showControls || isBuffering || playbackError != null,
             enter = fadeIn(),
             exit = fadeOut(),
             modifier = Modifier.fillMaxSize()
@@ -471,11 +537,13 @@ fun PlayerScreen(
                         ) {
                             Icon(Icons.Default.ErrorOutline, contentDescription = null, tint = NetflixRed, modifier = Modifier.size(36.dp))
                             Spacer(modifier = Modifier.height(8.dp))
-                            Text("No pude conectar con YouTube. Revisá la conexión a Internet o la configuración DNS del teléfono.", color = Color.White, fontSize = 14.sp)
+                            Text(youtubeErrorMessage, color = Color.White, fontSize = 14.sp)
                             Spacer(modifier = Modifier.height(12.dp))
                             Button(
                                 onClick = {
                                     youtubePlaybackError = false
+                                    youtubePageLoaded = false
+                                    youtubePlaybackStarted = false
                                     youtubeWebView?.reload()
                                 },
                                 colors = ButtonDefaults.buttonColors(containerColor = NetflixRed)
