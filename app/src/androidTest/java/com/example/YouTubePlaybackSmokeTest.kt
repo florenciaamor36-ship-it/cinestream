@@ -33,6 +33,7 @@ class YouTubePlaybackSmokeTest {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val template = YouTubeMoviesCatalog(context).loadBundled().first()
         val candidates = listOf(
+            "M7lc1UVf-VE" to "YouTube official IFrame API demo control",
             "rs-C58c7YNE" to "Peter Pan (1924)",
             "rUoiK53xGxg" to "Easy Street (1917)",
             "6JN6DyIZlJI" to "Laurel & Hardy public-domain film",
@@ -72,7 +73,8 @@ class YouTubePlaybackSmokeTest {
                 composeRule.onNodeWithTag("youtube_player_playing").fetchSemanticsNode()
                 return
             }
-            outcomes += "$title: rejected for embedding"
+            val errorText = runCatching { composeRule.onNodeWithTag("youtube_player_error_message").fetchSemanticsNode().config[androidx.compose.ui.semantics.SemanticsProperties.Text].joinToString { it.text } }.getOrDefault("unknown error")
+            outcomes += "$title: $errorText"
         }
         throw AssertionError("No candidate reached PLAYING inside the app: ${outcomes.joinToString("; ")}")
     }

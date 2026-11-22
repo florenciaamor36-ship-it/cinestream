@@ -302,7 +302,7 @@ fun PlayerScreen(
                         }
                         youtubeWebView = this
                         tag = movie.streamUrl
-                        loadDataWithBaseURL("https://github.com/florenciaamor36-ship-it/cinestream/", youtubeHtml, "text/html", "UTF-8", null)
+                        loadDataWithBaseURL("https://www.youtube.com/", youtubeHtml, "text/html", "UTF-8", null)
                     }
                 },
                 update = { view ->
@@ -312,7 +312,7 @@ fun PlayerScreen(
                         youtubePageLoaded = false
                         youtubePlaybackStarted = false
                         view.tag = movie.streamUrl
-                        view.loadDataWithBaseURL("https://github.com/florenciaamor36-ship-it/cinestream/", youtubeHtml, "text/html", "UTF-8", null)
+                        view.loadDataWithBaseURL("https://www.youtube.com/", youtubeHtml, "text/html", "UTF-8", null)
                     }
                 },
                 modifier = Modifier.fillMaxSize().testTag(
