@@ -27,7 +27,7 @@ internal class YouTubeMoviesCatalog(private val context: Context) {
                 listOf("bélica", "belica", "guerra", "war film", "wwii", "war movie").any(text::contains) -> "Bélica"
                 listOf("crimen", "criminal", "policíaca", "policiaca", "detective", "crime").any(text::contains) -> "Crimen"
                 listOf("animación", "animacion", "animated", "animation", "infantil", "para toda la familia", "family").any(text::contains) -> "Familiar y animación"
-                listOf("clásico", "clasico", "classic").any(text::contains) -> "Clásicos"
+                listOf("clásic", "clasico", "classic").any(text::contains) -> "Clásicos"
                 listOf("drama", "dramática", "dramatico", "dramatic").any(text::contains) -> "Drama"
                 else -> "Sin clasificar"
             }
