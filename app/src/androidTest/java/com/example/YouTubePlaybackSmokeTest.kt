@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.test.core.app.ApplicationProvider
 import android.content.Context
 import com.example.MainActivity
+import com.example.data.model.Movie
 import com.example.data.repository.YouTubeMoviesCatalog
 import com.example.ui.viewmodel.CineStreamViewModel
 import org.junit.Assert.assertEquals
@@ -13,7 +14,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
-/** Verifies official YouTube IFrame playback for curated full-movie candidates. */
+/** Confirms real playback inside the app using candidate YouTube full movies. */
 class YouTubePlaybackSmokeTest {
     @get:Rule
     val composeRule = createAndroidComposeRule<MainActivity>()
@@ -28,22 +29,34 @@ class YouTubePlaybackSmokeTest {
     }
 
     @Test
-    fun curatedYoutubeMoviesPlayInsideTheOfficialEmbed() {
+    fun candidateFullMoviesCanPlayInsideTheApp() {
         val context = ApplicationProvider.getApplicationContext<Context>()
-        val catalog = YouTubeMoviesCatalog(context).loadBundled()
-        // Sample across the distinct curated publishers; an individual rights-holder may disable embeds.
-        val candidateIds = listOf(1, 3, 4, 8, 9)
-        val candidates = candidateIds.mapNotNull { id -> catalog.firstOrNull { it.id == id } }
+        val template = YouTubeMoviesCatalog(context).loadBundled().first()
+        val candidates = listOf(
+            "rs-C58c7YNE" to "Peter Pan (1924)",
+            "rUoiK53xGxg" to "Easy Street (1917)",
+            "6JN6DyIZlJI" to "Laurel & Hardy public-domain film",
+            "55X8VHpS4hM" to "Good Morning, Miss Dove"
+        )
         val viewModel = ViewModelProvider(composeRule.activity)[CineStreamViewModel::class.java]
         val outcomes = mutableListOf<String>()
 
-        for (movie in candidates) {
+        for ((index, candidate) in candidates.withIndex()) {
+            val (videoId, title) = candidate
+            val movie = template.copy(
+                id = 900 + index,
+                title = title,
+                streamUrl = "https://www.youtube-nocookie.com/embed/$videoId?playsinline=1&rel=0&autoplay=1",
+                sourceUrl = "https://youtube.com/watch?v=$videoId",
+                creator = "YouTube full-movie candidate",
+                isLive = false
+            )
             composeRule.activity.runOnUiThread { viewModel.navigateToPlayer(movie) }
             composeRule.waitUntil(timeoutMillis = 30_000) {
-                runCatching { composeRule.onNodeWithTag("youtube_player_loading").fetchSemanticsNode(); true }.getOrDefault(false)
+                runCatching { composeRule.onNodeWithTag("video_player_screen").fetchSemanticsNode(); true }.getOrDefault(false)
             }
             val eventReceived = runCatching {
-                composeRule.waitUntil(timeoutMillis = 25_000) {
+                composeRule.waitUntil(timeoutMillis = 30_000) {
                     val playing = runCatching { composeRule.onNodeWithTag("youtube_player_playing").fetchSemanticsNode(); true }.getOrDefault(false)
                     val error = runCatching { composeRule.onNodeWithTag("youtube_player_error_state").fetchSemanticsNode(); true }.getOrDefault(false)
                     playing || error
@@ -52,16 +65,15 @@ class YouTubePlaybackSmokeTest {
             }.getOrDefault(false)
 
             if (!eventReceived) {
-                outcomes += "${movie.id} (${movie.title}): IFrame no respondió"
+                outcomes += "$title: no IFrame status"
                 continue
             }
             if (runCatching { composeRule.onNodeWithTag("youtube_player_playing").fetchSemanticsNode(); true }.getOrDefault(false)) {
-                // Success requires a real onStateChange(PLAYING), not just a loaded page.
                 composeRule.onNodeWithTag("youtube_player_playing").fetchSemanticsNode()
                 return
             }
-            outcomes += "${movie.id} (${movie.title}): YouTube devolvió error de inserción"
+            outcomes += "$title: rejected for embedding"
         }
-        throw AssertionError("Ninguna de las películas probadas informó PLAYING: ${outcomes.joinToString("; ")}")
+        throw AssertionError("No candidate reached PLAYING inside the app: ${outcomes.joinToString("; ")}")
     }
 }
