@@ -93,14 +93,19 @@ internal class YouTubeMoviesCatalog(private val context: Context) {
         private fun Element.firstText(namespace: String, local: String): String =
             getElementsByTagNameNS(namespace, local).item(0)?.textContent.orEmpty()
 
-        private fun genreFor(title: String, summary: String): String {
+        internal fun genreFor(title: String, summary: String): String {
             val text = "$title $summary".lowercase(Locale.ROOT)
             return when {
-                listOf("comedia", "comedy", "comédia").any(text::contains) -> "Comedia"
+                listOf("western", "vaquero", "cowboy", "oeste").any(text::contains) -> "Western"
                 listOf("terror", "horror", "thriller", "suspenso", "suspense").any(text::contains) -> "Suspenso y terror"
+                listOf("ciencia ficción", "ciencia ficcion", "sci-fi", "science fiction").any(text::contains) -> "Ciencia ficción"
                 listOf("acción", "accion", "action", "aventura", "adventure").any(text::contains) -> "Acción y aventura"
+                listOf("comedia", "comedy", "comédia").any(text::contains) -> "Comedia"
                 listOf("romance", "romántica", "romantica", "romantic").any(text::contains) -> "Romance"
                 listOf("documental", "documentary").any(text::contains) -> "Documental"
+                listOf("bélica", "belica", "guerra", "war film", "wwii").any(text::contains) -> "Bélica"
+                listOf("crimen", "criminal", "policíaca", "policiaca", "detective", "crime").any(text::contains) -> "Crimen"
+                listOf("animación", "animacion", "animated", "animation").any(text::contains) -> "Animación"
                 else -> "Drama"
             }
         }
@@ -168,7 +173,17 @@ internal class YouTubeMoviesCatalog(private val context: Context) {
                 if (error is IOException) break
             }
         }
-        if (movies.isEmpty()) throw lastError ?: IllegalStateException("Las listas de películas de YouTube no devolvieron videos.")
+        // NewPipe search supplements the rotating playlist RSS feeds with more channels/videos.
+        try {
+            com.example.data.youtube.YouTubeSearchCatalog().searchMovies().forEach { movie ->
+                val videoId = movie.streamUrl.substringAfterLast('/').substringBefore('?')
+                movies.putIfAbsent(videoId, movie)
+            }
+        } catch (error: Exception) {
+            lastError = error
+            android.util.Log.w("YouTubeMoviesCatalog", "YouTube search did not complete", error)
+        }
+        if (movies.isEmpty()) throw lastError ?: IllegalStateException("YouTube no devolvió películas completas en español.")
         return movies.values.sortedBy { it.title.lowercase(Locale.ROOT) }
     }
 }

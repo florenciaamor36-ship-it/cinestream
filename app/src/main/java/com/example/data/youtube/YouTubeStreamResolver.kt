@@ -24,10 +24,14 @@ object YouTubeStreamResolver {
         val id = videoIdPattern.find(videoUrl)?.groupValues?.get(1)
             ?: error("No pude identificar el video de YouTube.")
         val info = StreamInfo.getInfo("https://www.youtube.com/watch?v=$id")
-        val audio = info.audioStreams
-            .filter { stream -> isLatinAmericanSpanish(stream.audioLocale?.toLanguageTag()) }
-            .maxByOrNull { it.averageBitrate }
-            ?: error("No encontré una pista de audio identificada como español latino para esta película.")
+        val spanishTracks = info.audioStreams.filter { stream -> isSpanish(stream.audioLocale?.toLanguageTag()) }
+        val audio = spanishTracks
+            .maxByOrNull { stream ->
+                val locale = stream.audioLocale
+                val latinBonus = if (locale != null && isLatinAmericanSpanish(locale.toLanguageTag())) 1_000_000 else 0
+                latinBonus + stream.averageBitrate
+            }
+            ?: error("No encontré una pista de audio identificada como español para esta película.")
         val video = info.videoOnlyStreams
             .filter { it.height in 1..1080 && it.content.isNotBlank() }
             .maxByOrNull { it.height }
@@ -41,10 +45,14 @@ object YouTubeStreamResolver {
         )
     }
 
-    internal fun isLatinAmericanSpanish(languageTag: String?): Boolean {
+    internal fun isSpanish(languageTag: String?): Boolean {
         if (languageTag.isNullOrBlank()) return false
-        val locale = Locale.forLanguageTag(languageTag)
-        return locale.language.equals("es", ignoreCase = true) &&
-            locale.country.uppercase(Locale.ROOT) in latinAmericanSpanishRegions
+        return Locale.forLanguageTag(languageTag).language.equals("es", ignoreCase = true)
+    }
+
+    internal fun isLatinAmericanSpanish(languageTag: String?): Boolean {
+        if (!isSpanish(languageTag)) return false
+        val locale = Locale.forLanguageTag(languageTag!!)
+        return locale.country.uppercase(Locale.ROOT) in latinAmericanSpanishRegions
     }
 }

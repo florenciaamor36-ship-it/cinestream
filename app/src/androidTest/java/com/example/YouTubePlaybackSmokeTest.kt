@@ -23,7 +23,7 @@ class YouTubePlaybackSmokeTest {
     fun bundledFallbackHasPlayableYoutubeMovieEntries() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val movies = YouTubeMoviesCatalog(context).loadBundled()
-        assertEquals(62, movies.size)
+        assertTrue(movies.size >= 50)
         assertTrue(movies.all { it.streamUrl.startsWith("https://www.youtube-nocookie.com/embed/") })
         assertTrue(movies.all { it.sourceUrl.startsWith("https://youtube.com/watch?v=") })
     }

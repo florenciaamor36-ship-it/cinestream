@@ -163,7 +163,7 @@ fun PlayerScreen(
                 isBuffering = false
                 val causeMsg = error.cause?.message ?: error.errorCodeName
                 if (isYouTubeEmbed) {
-                    youtubeErrorMessage = "No se pudo reproducir la pista de español latino: ${error.message ?: causeMsg}"
+                    youtubeErrorMessage = "No se pudo reproducir la pista de audio en español: ${error.message ?: causeMsg}"
                     youtubePlaybackError = true
                 } else {
                     playbackError = "Error en el stream: ${error.message ?: causeMsg}"
