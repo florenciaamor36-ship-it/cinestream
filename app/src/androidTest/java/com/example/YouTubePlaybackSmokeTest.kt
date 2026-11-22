@@ -31,25 +31,12 @@ class YouTubePlaybackSmokeTest {
 
     @Test
     fun appOpensMovieAndLoadsOfficialYoutubeEmbedPage() {
-        // Pick a deterministic curated entry instead of whichever movie happens to be featured.
+        // The bundled catalogue is shown immediately on Home. Use its featured play button to
+        // avoid making the playback test depend on search filtering or off-screen card semantics.
         composeRule.waitUntil(timeoutMillis = 60_000) {
-            runCatching { composeRule.onNodeWithTag("toggle_search_button").fetchSemanticsNode(); true }.getOrDefault(false)
+            runCatching { composeRule.onNodeWithTag("hero_play_button").fetchSemanticsNode(); true }.getOrDefault(false)
         }
-        composeRule.onNodeWithTag("toggle_search_button").performClick()
-        composeRule.waitUntil(timeoutMillis = 15_000) {
-            runCatching { composeRule.onNodeWithTag("search_text_field").fetchSemanticsNode(); true }.getOrDefault(false)
-        }
-        composeRule.onNodeWithTag("search_text_field").performTextInput("Dos Puños Contra Rio")
-        composeRule.waitUntil(timeoutMillis = 30_000) {
-            runCatching { composeRule.onNodeWithTag("movie_card_10").fetchSemanticsNode(); true }.getOrDefault(false)
-        }
-        composeRule.onNodeWithTag("movie_card_10").performClick()
-        composeRule.waitUntil(timeoutMillis = 30_000) {
-            runCatching { composeRule.onNodeWithTag("detail_movie_title").fetchSemanticsNode(); true }.getOrDefault(false)
-        }
-        // The play button is below the 300dp poster/header inside a vertically scrollable detail page.
-        // Scroll it into view explicitly before tapping; otherwise the semantics node may be clipped.
-        composeRule.onNodeWithTag("detail_play_button").performScrollTo().performClick()
+        composeRule.onNodeWithTag("hero_play_button").performClick()
         composeRule.waitUntil(timeoutMillis = 30_000) {
             runCatching { composeRule.onNodeWithTag("video_player_screen").fetchSemanticsNode(); true }.getOrDefault(false)
         }
