@@ -445,7 +445,7 @@ class SabrClient private constructor(
             throw Exception("HTTP request failed: ${response.code}")
         }
 
-        return response.body.bytes()
+        return response.body?.bytes() ?: throw java.io.IOException("YouTube SABR response body was empty")
     }
 
     /**
