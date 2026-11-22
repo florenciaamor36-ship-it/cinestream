@@ -26,7 +26,7 @@ assert 'android.permission.INTERNET' in manifest, "Android needs INTERNET permis
 seed_path = root / "app/src/main/assets/youtube_movies_seed.json"
 seed = json.loads(seed_path.read_text(encoding="utf-8"))
 items = seed["items"]
-assert len(items) >= 250, f"Expected at least 250 offline fallback movies; found {len(items)}"
+assert len(items) >= 1700, f"Expected at least 1700 offline fallback movies; found {len(items)}"
 video_ids = [item["streamUrl"].split("/embed/", 1)[-1].split("?", 1)[0] for item in items]
 assert len(video_ids) == len(set(video_ids)), "Offline seed contains duplicate video IDs"
 assert all(re.fullmatch(r"[A-Za-z0-9_-]{11}", video_id) for video_id in video_ids)
@@ -39,12 +39,12 @@ assert all(item["rating"] == -1.0 and item["releaseYear"] == 0 for item in items
 assert all(item["durationMin"] >= 0 for item in items), "Runtime must be non-negative"
 candidate_items = [item for item in items if item.get("youtubeChannelId")]
 candidate_channels = {item["youtubeChannelId"] for item in candidate_items}
-assert len(candidate_items) >= 750, f"Expected at least 750 source-backed movie candidates; found {len(candidate_items)}"
-assert len(candidate_channels) >= 100, f"Expected at least 100 distinct candidate YouTube channels; found {len(candidate_channels)}"
+assert len(candidate_items) >= 1500, f"Expected at least 1500 source-backed movie candidates; found {len(candidate_items)}"
+assert len(candidate_channels) >= 250, f"Expected at least 250 distinct candidate YouTube channels; found {len(candidate_channels)}"
 search_items = [item for item in candidate_items if item.get("catalogEvidence", "").startswith("YouTube search result")]
 feed_items = [item for item in candidate_items if item.get("catalogEvidence", "").startswith("YouTube channel RSS")]
-assert len(search_items) >= 125 and all(item["durationMin"] >= 45 for item in search_items), "Search candidates need observed feature-length duration"
-assert len(feed_items) >= 600 and all(item["durationMin"] == 0 for item in feed_items), "RSS candidates must not invent unknown runtime"
+assert len(search_items) >= 350 and all(item["durationMin"] >= 45 for item in search_items), "Search candidates need observed feature-length duration"
+assert len(feed_items) >= 1200 and all(item["durationMin"] == 0 for item in feed_items), "RSS candidates must not invent unknown runtime"
 assert all(item.get("rightsStatus") == "No verificado" for item in candidate_items), "Don't imply rights verification"
 assert all("no verific" in item.get("synopsis", "").lower() for item in candidate_items), "Disclose candidate availability and rights status"
 assert not (root / "app/src/main/assets/ia_catalog_v2.dat").exists(), "Legacy noisy Archive snapshot must be removed"
