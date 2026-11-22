@@ -44,7 +44,20 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           disable-animations: true
           script: |
+            mkdir -p artifacts
             gradle :app:connectedDebugAndroidTest --no-daemon
+            test_status=$?
+            adb logcat -d -v time -s CineStreamYouTube:D chromium:D WebView:D AndroidRuntime:E > artifacts/youtube-player-logcat.txt || true
+            adb shell dumpsys connectivity > artifacts/connectivity.txt || true
+            exit "$test_status"
+      - name: Upload emulator diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cinestream-emulator-diagnostics-${{ github.sha }}
+          path: artifacts/*.txt
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
