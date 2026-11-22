@@ -22,5 +22,19 @@ class YouTubeMoviesCatalogTest {
         assertTrue(result.none { it.title.contains("Trailer", ignoreCase = true) })
         assertTrue(result.all { it.rating < 0.0 && it.releaseYear == 0 && it.durationMin == 0 })
     }
+    @Test fun catalogSourcesAreUniqueAndIncludeCuratedMoviePublishers() {
+        val ids = YouTubeMoviesCatalog.sources.map { it.playlistId }
+        assertTrue(ids.size >= 15)
+        assertEquals(ids.size, ids.distinct().size)
+        assertTrue(YouTubeMoviesCatalog.sources.any { it.name.contains("Movie Central") })
+        assertTrue(YouTubeMoviesCatalog.sources.any { it.name.contains("FilmIsNow") })
+        assertTrue(YouTubeMoviesCatalog.sources.any { it.name.contains("Romance Channel") })
+        assertTrue(YouTubeMoviesCatalog.sources.any { it.name.contains("Filmelier TV LATAM") })
+        assertTrue(YouTubeMoviesCatalog.sources.any { it.name.contains("Boxoffice") })
+        assertEquals("Acción y aventura", YouTubeMoviesCatalog.genreFor("Una historia", "Películas de acción"))
+        assertEquals("Clásicos", YouTubeMoviesCatalog.genreFor("Una historia", "Películas clásicas"))
+        assertEquals("Sin clasificar", YouTubeMoviesCatalog.genreFor("Una historia", "Lista de películas en español"))
+    }
+
 }
 

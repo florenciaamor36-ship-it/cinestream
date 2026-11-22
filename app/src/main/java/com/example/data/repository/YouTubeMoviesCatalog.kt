@@ -27,7 +27,16 @@ internal class YouTubeMoviesCatalog(private val context: Context) {
             PlaylistSource("Vision Video · Spanish Full Movies", "PL9cJRl8EYnLcnTz0_HRwRUmU5H3XMjwF0", "Vision Video"),
             PlaylistSource("Lifted · Películas en español", "PL5TwNUJx95KA4jPE9pijsucvCSPNcc7Aj", "Lifted"),
             PlaylistSource("Deep C Digital · Películas en español", "PLXNY08O_Iy2lG9TKvg8rIVsRupPbjc6se", "Deep C Digital"),
-            PlaylistSource("Mosfilm · Largometrajes con subtítulos en español", "PL7EqAsBxqGgiclckrDzyS9hYtGpIKEngQ", "Mosfilm")
+            PlaylistSource("Mosfilm · Largometrajes con subtítulos en español", "PL7EqAsBxqGgiclckrDzyS9hYtGpIKEngQ", "Mosfilm"),
+            PlaylistSource("Film&Clips · Películas completas en español (otra colección)", "PL_ip4tli3pJUfvei1-CR8KDA_RVQHcRgg", "Film&Clips"),
+            PlaylistSource("Movie Central · Películas completas en español", "PLE-F9hLrTNLaWg5TnusLPmljYyOXMKkV1", "Movie Central"),
+            PlaylistSource("Movie Central · Películas de acción", "PLE-F9hLrTNLbFnjrPsx4AIdAlrr22sk1G", "Movie Central"),
+            PlaylistSource("Movie Central · Películas familiares", "PLE-F9hLrTNLZPbvD_WoGjfgbpVMTUwK8s", "Movie Central"),
+            PlaylistSource("Movie Central · Películas clásicas", "PLE-F9hLrTNLafdu0nUt3mudcamcpOtBDY", "Movie Central"),
+            PlaylistSource("FilmIsNow Movies+ · Películas completas en español latino", "PL1VQG1QhVNxX78j3ubKzGywWtSel93OQk", "FilmIsNow Movies+"),
+            PlaylistSource("Romance Channel · Películas completas en español", "PLf5AXxQiJym_LGZRO6iP380FsLEVdYpGV", "Romance Channel"),
+            PlaylistSource("Filmelier TV LATAM · Películas completas", "PLmw5k159xVUji8xNLB4XhqRD8YBKcCarp", "Filmelier TV LATAM"),
+            PlaylistSource("Boxoffice · Películas completas en español", "PLgALNYLXbHkvj3CNPzOz3Yg_1A6BOgLio", "Boxoffice")
         )
 
         private const val YOUTUBE_EMBED = "https://www.youtube-nocookie.com/embed/"
@@ -67,7 +76,7 @@ internal class YouTubeMoviesCatalog(private val context: Context) {
                     val synopsis = listOf("Canal: $channelName", "Lista: ${source.name}")
                         .plus(summary.takeIf { it.isNotBlank() }?.let { "Descripción publicada en YouTube: $it" })
                         .joinToString("\n\n")
-                    val genre = genreFor(title, summary)
+                    val genre = genreFor(title, "$summary ${source.name}")
                     add(
                         Movie(
                             id = id.hashCode(),
@@ -105,10 +114,12 @@ internal class YouTubeMoviesCatalog(private val context: Context) {
                 listOf("comedia", "comedy", "comédia").any(text::contains) -> "Comedia"
                 listOf("romance", "romántica", "romantica", "romantic").any(text::contains) -> "Romance"
                 listOf("documental", "documentary").any(text::contains) -> "Documental"
-                listOf("bélica", "belica", "guerra", "war film", "wwii").any(text::contains) -> "Bélica"
+                listOf("bélica", "belica", "guerra", "war film", "wwii", "war movie").any(text::contains) -> "Bélica"
                 listOf("crimen", "criminal", "policíaca", "policiaca", "detective", "crime").any(text::contains) -> "Crimen"
-                listOf("animación", "animacion", "animated", "animation").any(text::contains) -> "Animación"
-                else -> "Drama"
+                listOf("animación", "animacion", "animated", "animation", "infantil", "para toda la familia", "family").any(text::contains) -> "Familiar y animación"
+                listOf("clásico", "clasico", "classic").any(text::contains) -> "Clásicos"
+                listOf("drama", "dramática", "dramatico", "dramática", "dramatic").any(text::contains) -> "Drama"
+                else -> "Sin clasificar"
             }
         }
     }
@@ -186,6 +197,6 @@ internal class YouTubeMoviesCatalog(private val context: Context) {
             android.util.Log.w("YouTubeMoviesCatalog", "YouTube search did not complete", error)
         }
         if (movies.isEmpty()) throw lastError ?: IllegalStateException("YouTube no devolvió películas completas en español.")
-        movies.values.sortedBy { it.title.lowercase(Locale.ROOT) }
+        movies.values.sortedWith(compareBy<Movie> { it.genre.lowercase(Locale.ROOT) }.thenBy { it.title.lowercase(Locale.ROOT) })
     }
 }

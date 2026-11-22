@@ -106,6 +106,6 @@ internal class YouTubeSearchCatalog {
                 Log.w(TAG, "Search query did not complete: $query", error)
             }
         }
-        byVideoId.values.sortedBy { it.title.lowercase(Locale.ROOT) }
+        byVideoId.values.sortedWith(compareBy<Movie> { it.genre.lowercase(Locale.ROOT) }.thenBy { it.title.lowercase(Locale.ROOT) })
     }
 }
