@@ -35,11 +35,13 @@ jobs:
           target: google_apis
           arch: x86_64
           profile: pixel_2
-          cores: 2
-          ram-size: 2048M
+          cores: 4
+          ram-size: 4096M
+          heap-size: 512M
+          emulator-boot-timeout: 360
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-snapshot
           disable-animations: true
           script: |
-            sleep 30
             gradle :app:connectedDebugAndroidTest --no-daemon
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
