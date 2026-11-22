@@ -1,4 +1,3 @@
-import com.google.protobuf.gradle.id
 import com.google.gms.googleservices.GoogleServicesPlugin.MissingGoogleServicesStrategy
 
 plugins {
@@ -8,7 +7,6 @@ plugins {
   alias(libs.plugins.roborazzi)
   alias(libs.plugins.secrets)
   alias(libs.plugins.google.services)
-  alias(libs.plugins.google.protobuf)
 }
 
 android {
@@ -155,12 +153,3 @@ dependencies {
   "ksp"(libs.moshi.kotlin.codegen)
 }
 
-
-protobuf {
-  protoc { artifact = libs.protobuf.protoc.get().toString() }
-  generateProtoTasks {
-    all().forEach { task ->
-      task.plugins { id("java") { option("lite") } }
-    }
-  }
-}
