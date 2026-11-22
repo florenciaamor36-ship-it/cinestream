@@ -30,11 +30,12 @@ class YouTubeLanguageFilterTest {
         assertFalse(YouTubeStreamResolver.isLatinAmericanSpanish("es"))
     }
 
-    @Test fun searchFiltersRejectShortClipsAndRequireSpanishFullMovieClues() {
+    @Test fun searchFiltersUseMovieAndSpanishCluesWithoutRuntimeCutoff() {
         assertTrue(YouTubeSearchCatalog.isFullSpanishMovie("Película completa en castellano", "", 7200))
+        assertTrue("No arbitrary runtime cutoff for a film", YouTubeSearchCatalog.isFullSpanishMovie("Película completa en español", "", 30 * 60L))
         assertTrue(YouTubeSearchCatalog.isFullSpanishMovie("Full Movie Spanish Dub", "", 7200))
         assertFalse(YouTubeSearchCatalog.isFullSpanishMovie("Trailer película completa español", "", 120))
         assertFalse(YouTubeSearchCatalog.isFullSpanishMovie("Película completa", "", 7200))
-        assertFalse(YouTubeSearchCatalog.isFullSpanishMovie("Película completa español", "", 500))
+        assertTrue(YouTubeSearchCatalog.isFullSpanishMovie("Película completa español", "", 500))
     }
 }

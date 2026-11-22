@@ -7,7 +7,7 @@ search_source = (root / "app/src/main/java/com/example/data/youtube/YouTubeSearc
 catalog_source = (root / "app/src/main/java/com/example/data/repository/YouTubeMoviesCatalog.kt").read_text(encoding="utf-8")
 assert "SearchInfo.getInfo" in search_source and "SearchInfo.getMoreItems" in search_source, "Live discovery must use the bundled NewPipe engine and paginate results"
 assert "MAX_PAGES_PER_QUERY = 4" in search_source
-assert "durationSeconds < 45 * 60" in search_source, "Reject results shorter than feature-length"
+assert "durationSeconds < 45 * 60" not in search_source, "Do not impose an arbitrary runtime cutoff on films"
 assert "fullLengthPattern.containsMatchIn(text)" in search_source and "spanishPattern.containsMatchIn(text)" in search_source
 assert "rejectPattern.containsMatchIn(title)" in search_source, "Reject trailers, clips, shorts and episodes"
 assert "YouTubeSearchCatalog().searchMovies()" in catalog_source, "The catalog must use the extractor engine"

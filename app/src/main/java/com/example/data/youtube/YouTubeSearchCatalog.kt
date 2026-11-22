@@ -68,7 +68,7 @@ internal class YouTubeSearchCatalog {
         )
 
         internal fun isFullSpanishMovie(title: String, description: String, durationSeconds: Long): Boolean {
-            if (durationSeconds < 45 * 60) return false
+            // Do not impose a runtime cutoff: the extractor's movie/title signals decide inclusion.
             val text = "$title $description"
             return fullLengthPattern.containsMatchIn(text) &&
                 spanishPattern.containsMatchIn(text) &&
