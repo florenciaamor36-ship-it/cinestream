@@ -11,6 +11,7 @@ class CineStreamApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         NewPipe.init(YouTubeExtractorDownloader())
+        LaClavePoTokenProvider.initialize(this)
         YoutubeStreamExtractor.setPoTokenProvider(LaClavePoTokenProvider)
     }
 }
