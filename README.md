@@ -1,6 +1,6 @@
 # CineStream
 
-CineStream opens directly to a catalog of full-length YouTube movie candidates—no login, registration, VPS, paid API key, or subscription is required. A bundled snapshot appears immediately; refreshing combines curated playlist feeds with NewPipe searches across additional YouTube channels. The app filters out trailers, clips, shorts, and short videos, and groups results into genres from their published titles and descriptions.
+CineStream opens directly to a catalog of full-length YouTube movie candidates—no login, registration, VPS, paid API key, or subscription is required. A bundled snapshot appears immediately while the app automatically refreshes in the background; manual refresh combines curated playlist feeds with NewPipe searches across additional YouTube channels. The app filters out trailers, clips, shorts, and short videos, and groups results into genres from their published titles and descriptions.
 
 ## Playback and language
 

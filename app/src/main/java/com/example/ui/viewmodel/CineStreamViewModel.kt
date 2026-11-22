@@ -57,8 +57,8 @@ class CineStreamViewModel(application: Application) : AndroidViewModel(applicati
     val uiState: StateFlow<CineStreamUiState> = _uiState.asStateFlow()
 
     init {
-        // Render the bundled catalogue immediately and offline; network refresh is an explicit user action.
-        refreshCatalog(refreshOnline = false)
+        // Show the bundled snapshot immediately, then expand it in the background from YouTube.
+        refreshCatalog(refreshOnline = true)
         updateCacheSize()
     }
 
