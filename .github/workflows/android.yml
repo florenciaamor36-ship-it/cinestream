@@ -45,8 +45,11 @@ jobs:
           disable-animations: true
           script: |
             mkdir -p artifacts
-            gradle :app:connectedDebugAndroidTest --no-daemon
-            test_status=$?
+            if gradle :app:connectedDebugAndroidTest --no-daemon; then
+              test_status=0
+            else
+              test_status=$?
+            fi
             adb logcat -d -v time -s CineStreamYouTube:D chromium:D WebView:D AndroidRuntime:E > artifacts/youtube-player-logcat.txt || true
             adb shell dumpsys connectivity > artifacts/connectivity.txt || true
             exit "$test_status"
