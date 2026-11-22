@@ -25,7 +25,14 @@ jobs:
       - name: Build Android APK
         run: gradle :app:assembleDebug --no-daemon
       - name: Test Android
-        run: gradle :app:testDebugUnitTest --no-daemon
+        run: |
+          for attempt in 1 2 3; do
+            gradle :app:testDebugUnitTest --no-daemon && exit 0
+            status=$?
+            echo "Unit tests failed on attempt ${attempt}; retrying to recover transient dependency downloads."
+            sleep 10
+          done
+          exit "$status"
       - name: Enable KVM for hardware-accelerated emulator
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
