@@ -13,6 +13,11 @@ class YouTubeLanguageFilterTest {
         }
     }
 
+    @Test fun acceptsGenericSpanishAndSpainSpanishTags() {
+        assertTrue(YouTubeStreamResolver.isSpanish("es"))
+        assertTrue(YouTubeStreamResolver.isSpanish("es-ES"))
+    }
+
     @Test fun rejectsUnspecifiedAndNonSpanishAudio() {
         listOf(null, "", "en-US", "pt-BR", "fr-FR").forEach {
             assertFalse("Expected $it to be rejected", YouTubeStreamResolver.isSpanish(it))

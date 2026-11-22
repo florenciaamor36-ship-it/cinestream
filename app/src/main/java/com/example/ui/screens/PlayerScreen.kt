@@ -108,7 +108,20 @@ fun PlayerScreen(
                 val mediaSource = if (isYouTubeEmbed) {
                     val resolved = checkNotNull(resolvedYouTube)
                     val factory = androidx.media3.exoplayer.source.ProgressiveMediaSource.Factory(dataSourceFactory)
-                    val video = factory.createMediaSource(MediaItem.fromUri(resolved.videoUrl))
+                    val videoItem = MediaItem.Builder()
+                        .setUri(resolved.videoUrl)
+                        .apply {
+                            resolved.spanishSubtitleUrl?.let { subtitleUrl ->
+                                val subtitle = MediaItem.SubtitleConfiguration.Builder(Uri.parse(subtitleUrl))
+                                    .setMimeType(resolved.spanishSubtitleMimeType ?: "text/vtt")
+                                    .setLanguage("es")
+                                    .setSelectionFlags(C.SELECTION_FLAG_DEFAULT)
+                                    .build()
+                                setSubtitleConfigurations(listOf(subtitle))
+                            }
+                        }
+                        .build()
+                    val video = factory.createMediaSource(videoItem)
                     val audio = factory.createMediaSource(MediaItem.fromUri(resolved.audioUrl))
                     androidx.media3.exoplayer.source.MergingMediaSource(video, audio)
                 } else {
@@ -310,7 +323,11 @@ fun PlayerScreen(
                                     modifier = Modifier.padding(end = 6.dp)
                                 ) {
                                     Text(
-                                        text = if (isYouTubeEmbed) (if (youtubePlaybackStarted) "LATINO OK" else "BUSCANDO LATINO") else "EN LÍNEA",
+                                        text = if (isYouTubeEmbed) {
+                                            if (!youtubePlaybackStarted) "BUSCANDO ESPAÑOL"
+                                            else if (resolvedYouTube?.hasSpanishAudio == true) "AUDIO ESPAÑOL"
+                                            else "SUBTÍTULOS ESPAÑOL"
+                                        } else "EN LÍNEA",
                                         fontSize = 9.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = Color.White,
@@ -318,7 +335,11 @@ fun PlayerScreen(
                                     )
                                 }
                                 Text(
-                                    text = if (isYouTubeEmbed) (if (youtubePlaybackStarted) "Audio latino verificado · CineStream" else "Buscando pista de audio latina") else "Reproducción de video",
+                                    text = if (isYouTubeEmbed) {
+                                        if (resolvedYouTube?.hasSpanishAudio == true) "Audio en español · CineStream"
+                                        else if (youtubePlaybackStarted) "Audio original con subtítulos en español"
+                                        else "Buscando audio o subtítulos en español"
+                                    } else "Reproducción de video",
                                     fontSize = 11.sp,
                                     color = TextSecondary
                                 )
@@ -583,7 +604,7 @@ fun PlayerScreen(
                                     shape = RoundedCornerShape(4.dp)
                                 ) {
                                     Text(
-                                        text = movie.quality,
+                                        text = if (isYouTubeEmbed && resolvedYouTube != null) "${resolvedYouTube!!.videoHeight}p" else movie.quality,
                                         fontSize = 11.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = BadgeTeal,
