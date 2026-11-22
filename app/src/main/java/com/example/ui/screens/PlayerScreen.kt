@@ -106,7 +106,7 @@ fun PlayerScreen(
                         5 -> "Este video no se puede reproducir en el reproductor integrado."
                         100 -> "El canal retiró este video o ya no está disponible."
                         101, 150 -> "El canal no permite reproducir este video dentro de CineStream."
-                        153 -> "YouTube rechazó el reproductor por falta de un origen válido."
+                        152, 153 -> "YouTube rechazó el origen o el Referer del reproductor integrado."
                         else -> "YouTube informó un error de reproducción ($code)."
                     }
                     youtubePlaybackError = true
@@ -235,7 +235,7 @@ fun PlayerScreen(
                 <!doctype html>
                 <html><head>
                   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-                  <meta name="referrer" content="strict-origin">
+                  <meta name="referrer" content="strict-origin-when-cross-origin">
                   <style>html,body,#player{margin:0;width:100%;height:100%;background:#000;overflow:hidden}</style>
                 </head><body>
                   <div id="player"></div>
@@ -244,7 +244,7 @@ fun PlayerScreen(
                     function onYouTubeIframeAPIReady() {
                       player = new YT.Player('player', {
                         width: '100%', height: '100%', videoId: '$videoId',
-                        playerVars: {playsinline: 1, rel: 0, autoplay: 1, origin: 'https://www.youtube.com'},
+                        playerVars: {playsinline: 1, rel: 0, autoplay: 1, enablejsapi: 1, origin: 'https://github.com'},
                         events: {
                           onReady: function(e) { AndroidBridge.onPlayerReady(); e.target.playVideo(); },
                           onStateChange: function(e) { if (e.data === YT.PlayerState.PLAYING) AndroidBridge.onPlayerPlaying(); },
@@ -302,7 +302,7 @@ fun PlayerScreen(
                         }
                         youtubeWebView = this
                         tag = movie.streamUrl
-                        loadDataWithBaseURL("https://www.youtube.com/", youtubeHtml, "text/html", "UTF-8", null)
+                        loadDataWithBaseURL("https://github.com/florenciaamor36-ship-it/cinestream/", youtubeHtml, "text/html", "UTF-8", null)
                     }
                 },
                 update = { view ->
@@ -312,7 +312,7 @@ fun PlayerScreen(
                         youtubePageLoaded = false
                         youtubePlaybackStarted = false
                         view.tag = movie.streamUrl
-                        view.loadDataWithBaseURL("https://www.youtube.com/", youtubeHtml, "text/html", "UTF-8", null)
+                        view.loadDataWithBaseURL("https://github.com/florenciaamor36-ship-it/cinestream/", youtubeHtml, "text/html", "UTF-8", null)
                     }
                 },
                 modifier = Modifier.fillMaxSize().testTag(
