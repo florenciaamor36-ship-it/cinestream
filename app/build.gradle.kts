@@ -1,3 +1,4 @@
+import com.google.protobuf.gradle.id
 import com.google.gms.googleservices.GoogleServicesPlugin.MissingGoogleServicesStrategy
 
 plugins {
@@ -7,6 +8,7 @@ plugins {
   alias(libs.plugins.roborazzi)
   alias(libs.plugins.secrets)
   alias(libs.plugins.google.services)
+  alias(libs.plugins.google.protobuf)
 }
 
 android {
@@ -104,6 +106,8 @@ dependencies {
   implementation(libs.coil.compose)
   implementation(libs.androidx.media3.exoplayer)
   implementation(libs.androidx.media3.exoplayer.hls)
+  implementation(libs.androidx.media3.exoplayer.dash)
+  implementation(libs.protobuf.javalite)
   implementation(libs.androidx.media3.ui)
   implementation(libs.androidx.media3.datasource.okhttp)
   implementation(libs.androidx.media3.common)
@@ -149,4 +153,14 @@ dependencies {
   debugImplementation(libs.androidx.compose.ui.tooling)
   "ksp"(libs.androidx.room.compiler)
   "ksp"(libs.moshi.kotlin.codegen)
+}
+
+
+protobuf {
+  protoc { artifact = libs.protobuf.protoc.get().toString() }
+  generateProtoTasks {
+    all().forEach { task ->
+      task.plugins { id("java") { option("lite") } }
+    }
+  }
 }

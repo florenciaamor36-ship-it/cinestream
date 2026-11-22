@@ -94,7 +94,7 @@ fun PlayerScreen(
         }
     }
 
-    // YouTube: NewPipe resuelve una pista de video y audio es-LatAm; otros flujos conservan Media3.
+    // YouTube: se reutiliza el pipeline SABR/UMP de La Clave; DASH/HLS directo queda como respaldo.
     val exoPlayer = remember(movie.id, movie.streamUrl, resolvedYouTube) {
         if (isYouTubeEmbed && resolvedYouTube == null) return@remember null
         val dataSourceFactory = if (isYouTubeEmbed) {
@@ -109,25 +109,41 @@ fun PlayerScreen(
             .setSeekBackIncrementMs(10000L)
             .setSeekForwardIncrementMs(10000L)
             .build().apply {
+                if (isYouTubeEmbed) {
+                    trackSelectionParameters = trackSelectionParameters.buildUpon()
+                        .setPreferredAudioLanguages("es", "es-419")
+                        .setPreferredTextLanguages("es", "es-419")
+                        .build()
+                }
                 val mediaSource = if (isYouTubeEmbed) {
                     val resolved = checkNotNull(resolvedYouTube)
-                    val factory = androidx.media3.exoplayer.source.ProgressiveMediaSource.Factory(dataSourceFactory)
-                    val videoItem = MediaItem.Builder()
-                        .setUri(resolved.videoUrl)
-                        .apply {
-                            resolved.spanishSubtitleUrl?.let { subtitleUrl ->
-                                val subtitle = MediaItem.SubtitleConfiguration.Builder(Uri.parse(subtitleUrl))
-                                    .setMimeType(resolved.spanishSubtitleMimeType ?: "text/vtt")
-                                    .setLanguage("es")
-                                    .setSelectionFlags(C.SELECTION_FLAG_DEFAULT)
-                                    .build()
-                                setSubtitleConfigurations(listOf(subtitle))
+                    val sabrManifest = resolved.sabrManifest
+                    if (sabrManifest != null) {
+                        val mediaItem = MediaItem.Builder()
+                            .setUri(sabrManifest.serverAbrStreamingUri)
+                            .setMimeType("application/vnd.yt-ump")
+                            .build()
+                        com.github.libretube.player.SabrMediaSource.Factory(sabrManifest, context)
+                            .createMediaSource(mediaItem)
+                    } else {
+                        val factory = androidx.media3.exoplayer.source.ProgressiveMediaSource.Factory(dataSourceFactory)
+                        val videoItem = MediaItem.Builder()
+                            .setUri(resolved.videoUrl)
+                            .apply {
+                                resolved.spanishSubtitleUrl?.let { subtitleUrl ->
+                                    val subtitle = MediaItem.SubtitleConfiguration.Builder(Uri.parse(subtitleUrl))
+                                        .setMimeType(resolved.spanishSubtitleMimeType ?: "text/vtt")
+                                        .setLanguage("es")
+                                        .setSelectionFlags(C.SELECTION_FLAG_DEFAULT)
+                                        .build()
+                                    setSubtitleConfigurations(listOf(subtitle))
+                                }
                             }
-                        }
-                        .build()
-                    val video = factory.createMediaSource(videoItem)
-                    val audio = factory.createMediaSource(MediaItem.fromUri(resolved.audioUrl))
-                    androidx.media3.exoplayer.source.MergingMediaSource(video, audio)
+                            .build()
+                        val video = factory.createMediaSource(videoItem)
+                        val audio = factory.createMediaSource(MediaItem.fromUri(resolved.audioUrl))
+                        androidx.media3.exoplayer.source.MergingMediaSource(video, audio)
+                    }
                 } else {
                     val mediaItem = MediaItem.Builder()
                         .setUri(Uri.parse(movie.streamUrl))

@@ -3,6 +3,13 @@ package com.example.data.youtube
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.schabi.newpipe.extractor.stream.StreamInfo
+import org.schabi.newpipe.extractor.stream.AudioStream
+import org.schabi.newpipe.extractor.stream.VideoStream
+import com.github.libretube.api.obj.PipedStream
+import com.github.libretube.api.obj.Streams
+import com.github.libretube.player.manifest.SabrManifest
+import androidx.annotation.OptIn
+import androidx.media3.common.util.UnstableApi
 import java.util.Locale
 
 /** Resolves a YouTube video to a video-only stream plus an explicitly Latin-American Spanish audio track. */
@@ -14,7 +21,8 @@ data class ResolvedYouTubeStream(
     val spanishSubtitleUrl: String?,
     val spanishSubtitleMimeType: String?,
     val videoHeight: Int,
-    val durationSeconds: Long
+    val durationSeconds: Long,
+    val sabrManifest: SabrManifest?
 )
 
 object YouTubeStreamResolver {
@@ -24,6 +32,7 @@ object YouTubeStreamResolver {
         "MX", "NI", "PA", "PE", "PR", "PY", "US", "UY", "VE"
     )
 
+    @OptIn(UnstableApi::class)
     suspend fun resolve(videoUrl: String): ResolvedYouTubeStream = withContext(Dispatchers.IO) {
         val id = videoIdPattern.find(videoUrl)?.groupValues?.get(1)
             ?: error("No pude identificar el video de YouTube.")
@@ -56,7 +65,23 @@ object YouTubeStreamResolver {
             spanishSubtitleUrl = spanishSubtitle?.content,
             spanishSubtitleMimeType = spanishSubtitle?.format?.mimeType,
             videoHeight = video.height,
-            durationSeconds = info.duration
+            durationSeconds = info.duration,
+            sabrManifest = info.serverAbrStreamingUrl?.takeIf { it.isNotBlank() }
+                ?.let { serverAbrUrl ->
+                    val sabrAudio = info.audioStreams.map { stream -> stream.toSabrPipedStream() }
+                    val sabrVideo = info.videoOnlyStreams.map { stream -> stream.toSabrPipedStream() }
+                    if (info.ustreamerConfig.isNullOrBlank() || sabrAudio.isEmpty() || sabrVideo.isEmpty()) null
+                    else SabrManifest(
+                        id,
+                        Streams(
+                            duration = info.duration,
+                            audioStreams = sabrAudio,
+                            videoStreams = sabrVideo,
+                            serverAbrStreamingUrl = serverAbrUrl,
+                            videoPlaybackUstreamerConfig = info.ustreamerConfig
+                        )
+                    )
+                }
         )
     }
 
@@ -71,3 +96,31 @@ object YouTubeStreamResolver {
         return locale.country.uppercase(Locale.ROOT) in latinAmericanSpanishRegions
     }
 }
+
+
+private fun VideoStream.toSabrPipedStream() = PipedStream(
+    codec = codec,
+    mimeType = format?.mimeType,
+    bitrate = bitrate,
+    width = width,
+    height = height,
+    fps = fps,
+    durationMs = itagItem?.approxDurationMs,
+    itag = itagItem?.id,
+    lastModified = itagItem?.lastModified,
+    xtags = itagItem?.xtags
+)
+
+private fun AudioStream.toSabrPipedStream() = PipedStream(
+    codec = codec,
+    mimeType = format?.mimeType,
+    bitrate = bitrate,
+    durationMs = itagItem?.approxDurationMs,
+    audioTrackId = audioTrackId,
+    audioTrackType = audioTrackType?.name,
+    audioTrackLocale = audioLocale?.toLanguageTag(),
+    itag = itagItem?.id,
+    lastModified = itagItem?.lastModified,
+    isDrc = itagItem?.isDrc,
+    xtags = itagItem?.xtags
+)

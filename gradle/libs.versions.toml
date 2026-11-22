@@ -41,9 +41,11 @@ secretsGradlePlugin = "2.0.1"
 googleServices = "4.5.0"
 credentials = "1.5.0"
 googleid = "1.1.1"
-media3 = "1.5.1"
+media3 = "1.9.2"
 desugaring = "2.1.5"
 newpipeExtractor = "3e863d7"
+protobuf = "4.33.5"
+protobufPlugin = "0.9.6"
 
 
 [libraries]
@@ -108,6 +110,9 @@ androidx-media3-datasource-okhttp = { group = "androidx.media3", name = "media3-
 androidx-media3-common = { group = "androidx.media3", name = "media3-common", version.ref = "media3" }
 desugaring = { group = "com.android.tools", name = "desugar_jdk_libs_nio", version.ref = "desugaring" }
 newpipe-extractor = { module = "com.github.libre-tube:NewPipeExtractor", version.ref = "newpipeExtractor" }
+protobuf-javalite = { module = "com.google.protobuf:protobuf-javalite", version.ref = "protobuf" }
+protobuf-protoc = { module = "com.google.protobuf:protoc", version.ref = "protobuf" }
+androidx-media3-exoplayer-dash = { group = "androidx.media3", name = "media3-exoplayer-dash", version.ref = "media3" }
 
 
 [plugins]
@@ -117,3 +122,4 @@ google-devtools-ksp = { id = "com.google.devtools.ksp", version.ref = "googleDev
 roborazzi = { id = "io.github.takahirom.roborazzi", version.ref = "roborazzi" }
 secrets = { id = "com.google.android.libraries.mapsplatform.secrets-gradle-plugin", version.ref = "secretsGradlePlugin" }
 google-services = { id = "com.google.gms.google-services", version.ref = "googleServices" }
+google-protobuf = { id = "com.google.protobuf", version.ref = "protobufPlugin" }

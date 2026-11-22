@@ -17,3 +17,8 @@ The bundled title snapshot can be browsed offline; refreshing uses YouTube feeds
 ## Build
 
 Run `python3 tools/validate_youtube_catalog.py`, `gradle :app:assembleDebug :app:testDebugUnitTest`, or use the repository's GitHub Actions workflow.
+
+
+### YouTube playback engine
+
+YouTube extraction uses the GPL-3.0 NewPipe Extractor fork used by La Clave Videos. For videos where the extractor supplies YouTube's server adaptive-bitrate stream metadata, CineStream uses the ported SABR/UMP Media3 player from that same repository; otherwise it falls back to the extractor's audio/video streams. Audio track selection prefers Spanish. This does not bypass YouTube sign-in, anti-bot, paid-content, or geographic restrictions; availability depends on the video and network.
