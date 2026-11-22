@@ -318,6 +318,7 @@ fun PlayerScreen(
                 modifier = Modifier.fillMaxSize().testTag(
                     when {
                         youtubePlaybackStarted -> "youtube_player_playing"
+                        youtubePlaybackError -> "youtube_player_error_state"
                         youtubePageLoaded -> "youtube_player_ready"
                         else -> "youtube_player_loading"
                     }
