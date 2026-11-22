@@ -38,6 +38,7 @@ import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import com.example.data.model.Movie
 import com.example.data.player.MediaCacheManager
+import org.schabi.newpipe.extractor.exceptions.SignInConfirmNotBotException
 import com.example.ui.theme.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -82,7 +83,10 @@ fun PlayerScreen(
                 resolvedYouTube = com.example.data.youtube.YouTubeStreamResolver.resolve(movie.streamUrl)
                 youtubePageLoaded = true
             } catch (error: Exception) {
-                youtubeErrorMessage = error.message ?: "No pude resolver este video de YouTube."
+                youtubeErrorMessage = when (error) {
+                    is SignInConfirmNotBotException -> "YouTube bloqueó la reproducción anónima desde esta red. No pude verificar este video dentro de CineStream."
+                    else -> error.message ?: "No pude resolver este video de YouTube."
+                }
                 youtubePlaybackError = true
                 isBuffering = false
                 android.util.Log.e("CineStreamYouTube", "Stream resolution failed for ${movie.streamUrl}", error)

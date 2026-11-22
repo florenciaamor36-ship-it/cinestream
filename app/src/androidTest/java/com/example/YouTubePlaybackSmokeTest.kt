@@ -76,6 +76,6 @@ class YouTubePlaybackSmokeTest {
             val errorText = runCatching { composeRule.onNodeWithTag("youtube_player_error_message").fetchSemanticsNode().config[androidx.compose.ui.semantics.SemanticsProperties.Text].joinToString { it.text } }.getOrDefault("unknown error")
             outcomes += "$title: $errorText"
         }
-        throw AssertionError("No candidate reached PLAYING inside the app with a verified Latin-American Spanish track: ${outcomes.joinToString("; ")}")
+        throw AssertionError("No candidate reached PLAYING inside the app with identified Spanish audio or subtitles: ${outcomes.joinToString("; ")}")
     }
 }
