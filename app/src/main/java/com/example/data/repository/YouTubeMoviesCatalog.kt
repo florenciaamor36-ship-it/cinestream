@@ -164,6 +164,11 @@ internal class YouTubeMoviesCatalog(private val context: Context) {
             .callTimeout(8, TimeUnit.SECONDS)
             .build()
         val movies = LinkedHashMap<String, Movie>()
+        // Keep the full bundled catalog after refresh; online feeds/search are supplements, not replacements.
+        loadBundled().forEach { movie ->
+            val videoId = movie.streamUrl.substringAfterLast("/embed/").substringBefore('?')
+            if (videoId.matches(Regex("[A-Za-z0-9_-]{11}"))) movies.putIfAbsent(videoId, movie)
+        }
         var lastError: Exception? = null
         for (source in sources) {
             try {
