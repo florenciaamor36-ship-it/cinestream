@@ -1,13 +1,19 @@
 # CineStream
 
-CineStream opens directly to a catalog of full movies selected from curated YouTube playlists. The app now bundles a small snapshot of 62 current playlist entries that matched the full-movie title and publisher filters, so the titles are visible even when YouTube's feed cannot be resolved; a successful refresh replaces the snapshot with current entries. The player is embedded with a valid YouTube page origin/referrer and uses the official IFrame Player API so it can report a real PLAYING callback. It filters out trailers/clips and accepts items only when the RSS author matches the expected publisher.
+CineStream opens directly to a local snapshot of full-movie candidates from curated YouTube playlists; no login, registration, VPS, paid API key, or subscription is required. The catalog filters out trailers and clips and keeps the source/channel information.
 
-Playback uses YouTube's official embedded player at `www.youtube-nocookie.com`; CineStream does not scrape direct media URLs, download, or rehost the video. YouTube playback still requires Internet access and may fail for region, age, publisher, or DNS/network restrictions. A bundled title list is not an offline video download. When the embed cannot load, the player shows a retry message and a button to open the YouTube watch page.
+## In-app YouTube playback
 
-Current sources span Film&Clips (Spanish and 4K playlists), Vision Video, Lifted, Deep C Digital, and Mosfilm (a playlist advertised with Spanish subtitles). YouTube's public RSS feeds expose only recent playlist entries, so this is not a search across all YouTube. The app does not invent runtimes, release years, ratings, audio languages, or subtitles.
+Playback uses the GPL-licensed NewPipe Extractor engine already used by the user's `la-clave-videos` project, together with CineStream's Media3 player. It resolves a video-only stream and requires a separately identified Latin-American Spanish audio track (`es-419` or a supported Latin-American locale) before starting playback. If YouTube does not expose an explicit qualifying audio track or stream, CineStream reports that instead of presenting unverified audio as Latin American Spanish. Streams play within CineStream; the app does not open an external player.
 
-`tools/validate_youtube_catalog.py` validates the curated playlists, fallback list, video IDs and player domains. CI builds the app and runs unit tests. A separate Android WebView instrumentation smoke test checks the embedded player page on an emulator.
+YouTube may change or restrict its public endpoints, and availability can vary by video, region, age, network, and device. A title in the bundled snapshot is a candidate, not a guarantee that it has a qualifying Latin-American audio track or will remain available.
+
+CineStream is distributed under GPL-3.0. See `LICENSE` and `THIRD_PARTY_NOTICES.md` for license and attribution details. The full corresponding source is this repository.
+
+The curated catalog contains a bundled snapshot so titles can be listed offline; refreshing uses the playlist RSS feeds. Playback requires an Internet connection.
+
+`tools/validate_youtube_catalog.py` checks the catalog structure. CI builds the app and runs unit tests plus an Android emulator playback smoke test. A build or passing unit tests alone does not establish that playback works; the smoke test must report `PLAYING`.
 
 ## Build
 
-Run `python3 tools/validate_youtube_catalog.py`, `gradle :app:assembleDebug :app:testDebugUnitTest`, or use GitHub Actions to build the debug APK.
+Run `python3 tools/validate_youtube_catalog.py`, `gradle :app:assembleDebug :app:testDebugUnitTest`, or use the repository's GitHub Actions workflow.

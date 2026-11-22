@@ -18,7 +18,7 @@ internal class YouTubeMoviesCatalog(private val context: Context) {
 
     companion object {
         // Curated playlists from film distributors / publishers. RSS contains only public YouTube video IDs;
-        // playback always uses YouTube's official embedded player, never a scraped media URL.
+        // This feed value is retained as a stable video-ID locator; playback is resolved by the GPL NewPipe engine.
         val sources = listOf(
             PlaylistSource("Film&Clips · Películas completas en español", "PL_ip4tli3pJXxQLtgyl5-yqoLLS1lvN51", "Film&Clips"),
             PlaylistSource("Film&Clips · Películas completas 4K", "PL01FPMJBuf6mOfnPadVdHmo5Qgyk-fKKJ", "Film&Clips"),

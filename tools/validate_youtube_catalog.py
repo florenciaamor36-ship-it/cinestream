@@ -11,7 +11,12 @@ assert len(playlist_ids) >= 6, f"Expected at least six curated YouTube playlists
 assert len(playlist_ids) == len(set(playlist_ids)), "Playlist IDs must be unique"
 assert len(publishers) >= 5, f"Expected at least five publishers; found {len(publishers)}"
 assert "youtube.com/feeds/videos.xml" in source
-assert "https://www.youtube-nocookie.com/embed/" in source
+assert "https://www.youtube-nocookie.com/embed/" in source  # retained only as the seed's video-ID locator
+resolver = (root / "app/src/main/java/com/example/data/youtube/YouTubeStreamResolver.kt").read_text(encoding="utf-8")
+player = (root / "app/src/main/java/com/example/ui/screens/PlayerScreen.kt").read_text(encoding="utf-8")
+assert "StreamInfo.getInfo" in resolver and "isLatinAmericanSpanish" in resolver
+assert "YouTubeStreamResolver.resolve" in player and "MergingMediaSource" in player
+assert "youtube.com/iframe_api" not in player
 assert "IOException" in source and "loadBundled()" in source
 assert "publisherMarker" in source and "fullMoviePattern" in source
 manifest = (root / "app/src/main/AndroidManifest.xml").read_text(encoding="utf-8")

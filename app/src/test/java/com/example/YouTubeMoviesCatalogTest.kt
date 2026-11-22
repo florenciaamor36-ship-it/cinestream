@@ -6,7 +6,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class YouTubeMoviesCatalogTest {
-    @Test fun playlistFeedKeepsFullMoviesAndUsesOfficialEmbedPlayer() {
+    @Test fun playlistFeedKeepsFullMovieCandidatesAndYouTubeIds() {
         val xml = """<?xml version="1.0"?><feed xmlns="http://www.w3.org/2005/Atom" xmlns:yt="http://www.youtube.com/xml/schemas/2015" xmlns:media="http://search.yahoo.com/mrss/">
           <entry><id>yt:video:AbCdEf12345</id><yt:videoId>AbCdEf12345</yt:videoId><title>Película Completa en Español</title><author><name>Canal de Cine</name></author><media:group><media:thumbnail url="https://i.ytimg.com/vi/AbCdEf12345/hqdefault.jpg"/></media:group></entry>
           <entry><yt:videoId>12345678901</yt:videoId><title>Trailer de Película Completa</title><author><name>Canal de Cine</name></author></entry>
@@ -23,3 +23,4 @@ class YouTubeMoviesCatalogTest {
         assertTrue(result.all { it.rating < 0.0 && it.releaseYear == 0 && it.durationMin == 0 })
     }
 }
+
