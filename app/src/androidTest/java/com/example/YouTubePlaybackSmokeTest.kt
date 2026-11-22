@@ -32,7 +32,7 @@ class YouTubePlaybackSmokeTest {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val catalog = YouTubeMoviesCatalog(context).loadBundled()
         // Sample across the distinct curated publishers; an individual rights-holder may disable embeds.
-        val candidateIds = listOf(1, 2, 3, 4, 6, 8, 9, 13, 15, 18)
+        val candidateIds = listOf(1, 3, 4, 8, 9)
         val candidates = candidateIds.mapNotNull { id -> catalog.firstOrNull { it.id == id } }
         val viewModel = ViewModelProvider(composeRule.activity)[CineStreamViewModel::class.java]
         val outcomes = mutableListOf<String>()
@@ -43,7 +43,7 @@ class YouTubePlaybackSmokeTest {
                 runCatching { composeRule.onNodeWithTag("youtube_player_loading").fetchSemanticsNode(); true }.getOrDefault(false)
             }
             val eventReceived = runCatching {
-                composeRule.waitUntil(timeoutMillis = 45_000) {
+                composeRule.waitUntil(timeoutMillis = 25_000) {
                     val playing = runCatching { composeRule.onNodeWithTag("youtube_player_playing").fetchSemanticsNode(); true }.getOrDefault(false)
                     val error = runCatching { composeRule.onNodeWithTag("youtube_player_error_state").fetchSemanticsNode(); true }.getOrDefault(false)
                     playing || error

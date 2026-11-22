@@ -246,7 +246,7 @@ fun PlayerScreen(
                         width: '100%', height: '100%', videoId: '$videoId',
                         playerVars: {playsinline: 1, rel: 0, autoplay: 1, enablejsapi: 1, origin: 'https://github.com'},
                         events: {
-                          onReady: function(e) { AndroidBridge.onPlayerReady(); e.target.playVideo(); },
+                          onReady: function(e) { AndroidBridge.onPlayerReady(); e.target.mute(); e.target.playVideo(); },
                           onStateChange: function(e) { if (e.data === YT.PlayerState.PLAYING) AndroidBridge.onPlayerPlaying(); },
                           onError: function(e) { AndroidBridge.onPlayerError(e.data); }
                         }
@@ -444,6 +444,9 @@ fun PlayerScreen(
                         onClick = {
                             isMuted = !isMuted
                             exoPlayer?.volume = if (isMuted) 0f else 1f
+                            if (isYouTubeEmbed) {
+                                youtubeWebView?.evaluateJavascript(if (isMuted) "player.mute()" else "player.unMute()", null)
+                            }
                         }
                     ) {
                         Icon(
