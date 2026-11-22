@@ -10,6 +10,8 @@ import java.io.IOException
 import java.net.URLEncoder
 import java.util.Locale
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import javax.xml.parsers.DocumentBuilderFactory
 
 /** A small, refreshable catalog of full movies published in YouTube playlists by their channels. */
@@ -145,7 +147,7 @@ internal class YouTubeMoviesCatalog(private val context: Context) {
         }
     }
 
-    fun load(): List<Movie> {
+    suspend fun load(): List<Movie> = withContext(Dispatchers.IO) {
         val client = com.example.data.network.NetworkClient.okHttpClient
             .newBuilder()
             .callTimeout(8, TimeUnit.SECONDS)
@@ -184,6 +186,6 @@ internal class YouTubeMoviesCatalog(private val context: Context) {
             android.util.Log.w("YouTubeMoviesCatalog", "YouTube search did not complete", error)
         }
         if (movies.isEmpty()) throw lastError ?: IllegalStateException("YouTube no devolvió películas completas en español.")
-        return movies.values.sortedBy { it.title.lowercase(Locale.ROOT) }
+        movies.values.sortedBy { it.title.lowercase(Locale.ROOT) }
     }
 }

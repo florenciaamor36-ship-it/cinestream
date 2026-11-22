@@ -51,6 +51,7 @@ android {
     }
   }
   compileOptions {
+    isCoreLibraryDesugaringEnabled = true
     sourceCompatibility = JavaVersion.VERSION_11
     targetCompatibility = JavaVersion.VERSION_11
   }
@@ -107,6 +108,7 @@ dependencies {
   implementation(libs.androidx.media3.datasource.okhttp)
   implementation(libs.androidx.media3.common)
   implementation(libs.newpipe.extractor)
+  coreLibraryDesugaring(libs.desugaring)
   implementation(libs.converter.moshi)
   implementation(libs.firebase.ai)
   // Uncomment to use Firestore:
