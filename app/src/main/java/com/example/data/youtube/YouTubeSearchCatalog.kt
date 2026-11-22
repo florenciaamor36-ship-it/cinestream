@@ -4,6 +4,7 @@ import android.util.Log
 import com.example.data.model.Movie
 import com.example.data.repository.YouTubeMoviesCatalog
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import org.schabi.newpipe.extractor.ServiceList
 import org.schabi.newpipe.extractor.NewPipe
@@ -12,20 +13,49 @@ import org.schabi.newpipe.extractor.search.SearchInfo
 import org.schabi.newpipe.extractor.stream.StreamInfoItem
 import java.util.Locale
 
-/** Discovers additional full-length Spanish-language films beyond the small playlist RSS snapshots. */
+/** Uses CineStream's bundled NewPipe/La Clave extractor and discards anything not clearly a full Spanish film. */
 internal class YouTubeSearchCatalog {
     companion object {
         private const val TAG = "YouTubeSearchCatalog"
-        private const val MAX_PAGES_PER_QUERY = 3
+        // YouTube search is paginated; broader genre queries find many more full films than a short fixed seed.
+        private const val MAX_PAGES_PER_QUERY = 4
         private val queries = listOf(
             "película completa en español",
             "película completa español latino",
+            "películas completas español latino",
             "película completa castellano",
-            "películas completas dobladas al español",
-            "largometraje completo en español",
+            "película completa doblada al español",
             "película completa subtitulada en español",
+            "largometraje completo en español",
             "full movie Spanish",
-            "película completa Spanish dub"
+            "full movie Latin Spanish",
+            "película completa acción español",
+            "película completa aventura español",
+            "película completa comedia español",
+            "película completa drama español",
+            "película completa romántica español",
+            "película completa terror español",
+            "película completa suspenso español",
+            "película completa ciencia ficción español",
+            "película completa western español",
+            "película completa vaqueros español",
+            "película completa crimen español",
+            "película completa policiaca español",
+            "película completa bélica español",
+            "película completa guerra español",
+            "película completa familiar español",
+            "película completa animación español",
+            "película completa mexicana español",
+            "película completa argentina español",
+            "película completa española castellano",
+            "película completa latinoamericana español",
+            "película completa cine clásico español",
+            "película completa documental español",
+            "película completa subtítulos español latino",
+            "película completa doblaje español latino",
+            "película de acción full movie español",
+            "película de terror full movie español",
+            "película de ciencia ficción full movie español"
         )
         private val fullLengthPattern = Regex(
             "(?iu)(pel[ií]cula(s)?\\s+(completa(s)?|entera(s)?|\\bfull\\b)|full\\s+(length\\s+)?movie|full\\s+film|feature\\s+film|largometraje|filme\\s+completo)"
@@ -54,6 +84,7 @@ internal class YouTubeSearchCatalog {
             val image = thumbnails.maxByOrNull { it.height }?.url.orEmpty()
             val synopsis = listOfNotNull(
                 "Canal: $channel",
+                "Duración informada por el motor: ${durationSeconds / 60} min",
                 shortDescription?.takeIf(String::isNotBlank)?.take(500)
             ).joinToString("\n\n")
             return Movie(
@@ -63,7 +94,7 @@ internal class YouTubeSearchCatalog {
                 posterUrl = image,
                 backdropUrl = image,
                 genre = YouTubeMoviesCatalog.genreFor(title, shortDescription.orEmpty()),
-                durationMin = durationSeconds.toInt().div(60),
+                durationMin = durationSeconds.toInt() / 60,
                 releaseYear = 0,
                 rating = -1.0,
                 quality = "YouTube · $channel",
@@ -101,6 +132,7 @@ internal class YouTubeSearchCatalog {
                         byVideoId.putIfAbsent(id, movie)
                     }
                     pageNumber++
+                    if (page != null && pageNumber < MAX_PAGES_PER_QUERY) delay(125)
                 } while (page != null && pageNumber < MAX_PAGES_PER_QUERY)
             } catch (error: Exception) {
                 Log.w(TAG, "Search query did not complete: $query", error)
