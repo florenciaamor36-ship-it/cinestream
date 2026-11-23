@@ -3,7 +3,7 @@ set +e
 mkdir -p artifacts
 gradle :app:connectedDebugAndroidTest --no-daemon
 test_status=$?
-adb logcat -d -v time -s CineStreamYouTube:D chromium:D WebView:D AndroidRuntime:E > artifacts/youtube-player-logcat.txt 2>&1
+adb logcat -d -v time -s CineStreamYouTube:D CineStreamPlayer:D NewPipe:D AndroidRuntime:E > artifacts/youtube-player-logcat.txt 2>&1
 logcat_status=$?
 adb shell dumpsys connectivity > artifacts/connectivity.txt 2>&1
 connectivity_status=$?

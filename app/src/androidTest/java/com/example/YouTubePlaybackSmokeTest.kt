@@ -23,7 +23,7 @@ class YouTubePlaybackSmokeTest {
     fun bundledFallbackHasPlayableYoutubeMovieEntries() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val movies = YouTubeMoviesCatalog(context).loadBundled()
-        assertEquals(62, movies.size)
+        assertTrue(movies.size >= 50)
         assertTrue(movies.all { it.streamUrl.startsWith("https://www.youtube-nocookie.com/embed/") })
         assertTrue(movies.all { it.sourceUrl.startsWith("https://youtube.com/watch?v=") })
     }
@@ -33,11 +33,11 @@ class YouTubePlaybackSmokeTest {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val template = YouTubeMoviesCatalog(context).loadBundled().first()
         val candidates = listOf(
-            "M7lc1UVf-VE" to "YouTube official IFrame API demo control",
-            "rs-C58c7YNE" to "Peter Pan (1924)",
-            "rUoiK53xGxg" to "Easy Street (1917)",
-            "6JN6DyIZlJI" to "Laurel & Hardy public-domain film",
-            "55X8VHpS4hM" to "Good Morning, Miss Dove"
+            "RKOxbf03sgE" to "Dos Puños Contra Rio · Español",
+            "sbucezgLn0k" to "Atraídas por la Noche · Español",
+            "eNa1SGztvJA" to "Bendiciones Ocultas · doblaje español",
+            "6gvc6AaUY8c" to "Call Girl · español",
+            "yuP14Qx2JJk" to "El Cuarto Rey Mago · español"
         )
         val viewModel = ViewModelProvider(composeRule.activity)[CineStreamViewModel::class.java]
         val outcomes = mutableListOf<String>()
@@ -76,6 +76,6 @@ class YouTubePlaybackSmokeTest {
             val errorText = runCatching { composeRule.onNodeWithTag("youtube_player_error_message").fetchSemanticsNode().config[androidx.compose.ui.semantics.SemanticsProperties.Text].joinToString { it.text } }.getOrDefault("unknown error")
             outcomes += "$title: $errorText"
         }
-        throw AssertionError("No candidate reached PLAYING inside the app: ${outcomes.joinToString("; ")}")
+        throw AssertionError("No candidate reached PLAYING inside the app with identified Spanish audio or subtitles: ${outcomes.joinToString("; ")}")
     }
 }

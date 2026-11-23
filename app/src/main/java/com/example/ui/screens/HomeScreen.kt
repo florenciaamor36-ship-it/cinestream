@@ -109,7 +109,15 @@ fun HomeScreen(
                     text = "Películas completas de canales de YouTube",
                     style = MaterialTheme.typography.labelSmall,
                     color = TextSecondary,
-                    modifier = Modifier.padding(start = 56.dp, bottom = 6.dp)
+                    modifier = Modifier.padding(start = 56.dp, bottom = 2.dp)
+                )
+                Text(
+                    text = "Catálogo: ${uiState.totalMovieCount} películas",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = TextSecondary,
+                    modifier = Modifier
+                        .padding(start = 56.dp, bottom = 6.dp)
+                        .testTag("catalog_movie_count")
                 )
 
                 // Selector de Pestaña: Inicio vs Películas vs Series vs TV en Vivo

@@ -24,6 +24,7 @@ sealed interface AppScreen {
 data class CineStreamUiState(
     val currentScreen: AppScreen = AppScreen.Home,
     val movies: List<Movie> = emptyList(),
+    val totalMovieCount: Int = 0,
     val liveChannels: List<Movie> = emptyList(),
     val liveChannelsByCategory: Map<String, List<Movie>> = emptyMap(),
     val selectedLiveCategory: String = "Todos",
@@ -57,8 +58,8 @@ class CineStreamViewModel(application: Application) : AndroidViewModel(applicati
     val uiState: StateFlow<CineStreamUiState> = _uiState.asStateFlow()
 
     init {
-        // Render the bundled catalogue immediately and offline; network refresh is an explicit user action.
-        refreshCatalog(refreshOnline = false)
+        // Show the bundled snapshot immediately, then expand it in the background from YouTube.
+        refreshCatalog(refreshOnline = true)
         updateCacheSize()
     }
 
@@ -109,10 +110,14 @@ class CineStreamViewModel(application: Application) : AndroidViewModel(applicati
         val current = _uiState.value
         val result = repository.getMovies(current.selectedGenre, current.searchQuery)
         val genres = repository.getYouTubeGenres()
+        val totalMovieCount = repository.getMovies()
+            .getOrDefault(emptyList())
+            .count { !it.isSeries && !it.isLive }
         result.onSuccess { list ->
             _uiState.update {
                 it.copy(
                     movies = list,
+                    totalMovieCount = totalMovieCount,
                     liveChannels = emptyList(),
                     liveChannelsByCategory = emptyMap(),
                     availableGenres = listOf("Todos") + genres,

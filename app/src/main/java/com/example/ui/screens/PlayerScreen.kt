@@ -1,18 +1,7 @@
 package com.example.ui.screens
 
-import android.content.Intent
 import android.net.Uri
 import android.view.ViewGroup
-import android.webkit.WebChromeClient
-import android.webkit.ConsoleMessage
-import android.webkit.WebSettings
-import android.webkit.WebView
-import android.webkit.WebViewClient
-import android.webkit.WebResourceRequest
-import android.webkit.JavascriptInterface
-import android.os.Handler
-import android.os.Looper
-import android.webkit.WebResourceError
 import android.widget.FrameLayout
 import androidx.annotation.OptIn
 import androidx.compose.animation.*
@@ -49,8 +38,11 @@ import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import com.example.data.model.Movie
 import com.example.data.player.MediaCacheManager
+import org.schabi.newpipe.extractor.exceptions.SignInConfirmNotBotException
 import com.example.ui.theme.*
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.isActive
 
 @OptIn(UnstableApi::class)
@@ -72,85 +64,104 @@ fun PlayerScreen(
     var youtubePlaybackError by remember { mutableStateOf(false) }
     var youtubePageLoaded by remember { mutableStateOf(false) }
     var youtubePlaybackStarted by remember { mutableStateOf(false) }
-    var youtubeErrorMessage by remember { mutableStateOf("YouTube no pudo iniciar este video.") }
-    var youtubeWebView by remember { mutableStateOf<WebView?>(null) }
-    val mainHandler = remember { Handler(Looper.getMainLooper()) }
-    val youtubeBridge = remember(movie.streamUrl) {
-        object {
-            @JavascriptInterface
-            fun onPlayerReady() {
-                android.util.Log.i("CineStreamYouTube", "IFrame API ready for ${movie.streamUrl}")
-                mainHandler.post {
-                    youtubePageLoaded = true
-                    youtubePlaybackError = false
-                }
-            }
+    var youtubeErrorMessage by remember { mutableStateOf("No se pudo preparar la reproducción.") }
+    var resolvedYouTube by remember(movie.streamUrl) { mutableStateOf<com.example.data.youtube.ResolvedYouTubeStream?>(null) }
+    var youtubeRetryNonce by remember(movie.streamUrl) { mutableIntStateOf(0) }
+    var isMuted by remember { mutableStateOf(false) }
+    val isYouTubeEmbed = movie.streamUrl.contains("youtube", ignoreCase = true) &&
+        (movie.streamUrl.contains("/embed/") || movie.streamUrl.contains("watch?v="))
 
-            @JavascriptInterface
-            fun onPlayerPlaying() {
-                android.util.Log.i("CineStreamYouTube", "IFrame API reported PLAYING")
-                mainHandler.post {
-                    youtubePageLoaded = true
-                    youtubePlaybackStarted = true
-                    youtubePlaybackError = false
-                    isBuffering = false
+    LaunchedEffect(movie.streamUrl, youtubeRetryNonce) {
+        if (isYouTubeEmbed) {
+            resolvedYouTube = null
+            playbackError = null
+            youtubePlaybackError = false
+            youtubePageLoaded = false
+            youtubePlaybackStarted = false
+            isBuffering = true
+            try {
+                resolvedYouTube = com.example.data.youtube.YouTubeStreamResolver.resolve(movie.streamUrl)
+                youtubePageLoaded = true
+            } catch (error: Exception) {
+                youtubeErrorMessage = when (error) {
+                    is SignInConfirmNotBotException -> "YouTube bloqueó la reproducción anónima desde esta red. No pude verificar este video dentro de CineStream."
+                    else -> error.message ?: "No pude resolver este video de YouTube."
                 }
-            }
-
-            @JavascriptInterface
-            fun onPlayerError(code: Int) {
-                android.util.Log.e("CineStreamYouTube", "IFrame API error $code for ${movie.streamUrl}")
-                mainHandler.post {
-                    youtubeErrorMessage = when (code) {
-                        2 -> "El identificador del video no es válido."
-                        5 -> "Este video no se puede reproducir en el reproductor integrado."
-                        100 -> "El canal retiró este video o ya no está disponible."
-                        101, 150 -> "El canal no permite reproducir este video dentro de CineStream."
-                        152, 153 -> "YouTube rechazó el origen o el Referer del reproductor integrado."
-                        else -> "YouTube informó un error de reproducción ($code)."
-                    }
-                    youtubePlaybackError = true
-                    youtubePageLoaded = false
-                    isBuffering = false
-                }
+                youtubePlaybackError = true
+                isBuffering = false
+                android.util.Log.e("CineStreamYouTube", "Stream resolution failed for ${movie.streamUrl}", error)
             }
         }
     }
-    var isMuted by remember { mutableStateOf(false) }
 
-    val isYouTubeEmbed = movie.streamUrl.contains("/embed/") && movie.streamUrl.contains("youtube")
-
-    // Inicializar ExoPlayer con CacheDataSource para VOD o LiveDataSource para HLS (solo si no es YouTube embed)
-    val exoPlayer = remember(movie.id, movie.streamUrl) {
-        if (isYouTubeEmbed) return@remember null
-        val dataSourceFactory = if (movie.isLive) {
+    // YouTube: se reutiliza el pipeline SABR/UMP de La Clave; DASH/HLS directo queda como respaldo.
+    val exoPlayer = remember(movie.id, movie.streamUrl, resolvedYouTube) {
+        if (isYouTubeEmbed && resolvedYouTube == null) return@remember null
+        val dataSourceFactory = if (isYouTubeEmbed) {
+            androidx.media3.datasource.DefaultDataSource.Factory(context)
+        } else if (movie.isLive) {
             MediaCacheManager.createLiveDataSourceFactory(context)
         } else {
             MediaCacheManager.createCacheDataSourceFactory(context)
         }
 
         ExoPlayer.Builder(context)
-            .setSeekBackIncrementMs(10000L) // 10 segundos
+            .setSeekBackIncrementMs(10000L)
             .setSeekForwardIncrementMs(10000L)
             .build().apply {
-                val mediaItem = MediaItem.Builder()
-                    .setUri(Uri.parse(movie.streamUrl))
-                    .apply {
-                        if (movie.isLive || movie.streamUrl.contains(".m3u8")) {
-                            setMimeType(androidx.media3.common.MimeTypes.APPLICATION_M3U8)
-                        }
-                    }
-                    .build()
-
-                val mediaSource = if (movie.isLive || movie.streamUrl.contains(".m3u8")) {
-                    androidx.media3.exoplayer.hls.HlsMediaSource.Factory(dataSourceFactory)
-                        .setAllowChunklessPreparation(true)
-                        .createMediaSource(mediaItem)
-                } else {
-                    androidx.media3.exoplayer.source.ProgressiveMediaSource.Factory(dataSourceFactory)
-                        .createMediaSource(mediaItem)
+                if (isYouTubeEmbed) {
+                    trackSelectionParameters = trackSelectionParameters.buildUpon()
+                        .setPreferredAudioLanguages("es", "es-419")
+                        .setPreferredTextLanguages("es", "es-419")
+                        .build()
                 }
-
+                val mediaSource = if (isYouTubeEmbed) {
+                    val resolved = checkNotNull(resolvedYouTube)
+                    val sabrManifest = resolved.sabrManifest
+                    if (sabrManifest != null) {
+                        val mediaItem = MediaItem.Builder()
+                            .setUri(sabrManifest.serverAbrStreamingUri)
+                            .setMimeType("application/vnd.yt-ump")
+                            .build()
+                        com.github.libretube.player.SabrMediaSource.Factory(sabrManifest, context)
+                            .createMediaSource(mediaItem)
+                    } else {
+                        val factory = androidx.media3.exoplayer.source.ProgressiveMediaSource.Factory(dataSourceFactory)
+                        val videoItem = MediaItem.Builder()
+                            .setUri(resolved.videoUrl)
+                            .apply {
+                                resolved.spanishSubtitleUrl?.let { subtitleUrl ->
+                                    val subtitle = MediaItem.SubtitleConfiguration.Builder(Uri.parse(subtitleUrl))
+                                        .setMimeType(resolved.spanishSubtitleMimeType ?: "text/vtt")
+                                        .setLanguage("es")
+                                        .setSelectionFlags(C.SELECTION_FLAG_DEFAULT)
+                                        .build()
+                                    setSubtitleConfigurations(listOf(subtitle))
+                                }
+                            }
+                            .build()
+                        val video = factory.createMediaSource(videoItem)
+                        val audio = factory.createMediaSource(MediaItem.fromUri(resolved.audioUrl))
+                        androidx.media3.exoplayer.source.MergingMediaSource(video, audio)
+                    }
+                } else {
+                    val mediaItem = MediaItem.Builder()
+                        .setUri(Uri.parse(movie.streamUrl))
+                        .apply {
+                            if (movie.isLive || movie.streamUrl.contains(".m3u8")) {
+                                setMimeType(androidx.media3.common.MimeTypes.APPLICATION_M3U8)
+                            }
+                        }
+                        .build()
+                    if (movie.isLive || movie.streamUrl.contains(".m3u8")) {
+                        androidx.media3.exoplayer.hls.HlsMediaSource.Factory(dataSourceFactory)
+                            .setAllowChunklessPreparation(true)
+                            .createMediaSource(mediaItem)
+                    } else {
+                        androidx.media3.exoplayer.source.ProgressiveMediaSource.Factory(dataSourceFactory)
+                            .createMediaSource(mediaItem)
+                    }
+                }
                 setMediaSource(mediaSource)
                 prepare()
                 playWhenReady = true
@@ -160,7 +171,7 @@ fun PlayerScreen(
     // Listener para actualizar estados de ExoPlayer
     DisposableEffect(exoPlayer) {
         if (exoPlayer == null) {
-            isBuffering = false
+            if (!isYouTubeEmbed || youtubePlaybackError) isBuffering = false
             return@DisposableEffect onDispose {}
         }
         val listener = object : Player.Listener {
@@ -174,12 +185,22 @@ fun PlayerScreen(
 
             override fun onIsPlayingChanged(playing: Boolean) {
                 isPlaying = playing
+                if (isYouTubeEmbed && playing) {
+                    youtubePlaybackStarted = true
+                    youtubePlaybackError = false
+                    isBuffering = false
+                }
             }
 
             override fun onPlayerError(error: PlaybackException) {
                 isBuffering = false
                 val causeMsg = error.cause?.message ?: error.errorCodeName
-                playbackError = "Error en el stream: ${error.message ?: causeMsg}"
+                if (isYouTubeEmbed) {
+                    youtubeErrorMessage = "No se pudo reproducir la pista de audio en español: ${error.message ?: causeMsg}"
+                    youtubePlaybackError = true
+                } else {
+                    playbackError = "Error en el stream: ${error.message ?: causeMsg}"
+                }
                 android.util.Log.e("CineStreamPlayer", "ExoPlayer error (${error.errorCode}): ${error.message}", error)
             }
         }
@@ -219,7 +240,7 @@ fun PlayerScreen(
             .fillMaxSize()
             .background(Color.Black)
             .clickable(
-                enabled = !isYouTubeEmbed,
+                enabled = true,
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null
             ) {
@@ -227,136 +248,35 @@ fun PlayerScreen(
             }
             .testTag("video_player_screen")
     ) {
-        // Vista de Video: YouTube WebView nativo o Media3 / ExoPlayer
-        if (isYouTubeEmbed) {
-            val videoId = Uri.parse(movie.streamUrl).lastPathSegment.orEmpty()
-            val youtubeHtml = remember(movie.streamUrl) {
-                """
-                <!doctype html>
-                <html><head>
-                  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-                  <meta name="referrer" content="strict-origin-when-cross-origin">
-                  <style>html,body,#player{margin:0;width:100%;height:100%;background:#000;overflow:hidden}</style>
-                </head><body>
-                  <div id="player"></div>
-                  <script>
-                    var player;
-                    function onYouTubeIframeAPIReady() {
-                      player = new YT.Player('player', {
-                        width: '100%', height: '100%', videoId: '$videoId',
-                        playerVars: {playsinline: 1, rel: 0, autoplay: 1, enablejsapi: 1, origin: 'https://github.com'},
-                        events: {
-                          onReady: function(e) { AndroidBridge.onPlayerReady(); e.target.mute(); e.target.playVideo(); },
-                          onStateChange: function(e) { if (e.data === YT.PlayerState.PLAYING) AndroidBridge.onPlayerPlaying(); },
-                          onError: function(e) { AndroidBridge.onPlayerError(e.data); }
-                        }
-                      });
-                    }
-                  </script>
-                  <script src="https://www.youtube.com/iframe_api"></script>
-                </body></html>
-                """.trimIndent()
-            }
-            AndroidView(
-                factory = { ctx ->
-                    WebView(ctx).apply {
-                        layoutParams = FrameLayout.LayoutParams(
-                            ViewGroup.LayoutParams.MATCH_PARENT,
-                            ViewGroup.LayoutParams.MATCH_PARENT
-                        )
-                        settings.javaScriptEnabled = true
-                        settings.domStorageEnabled = true
-                        settings.mediaPlaybackRequiresUserGesture = false
-                        settings.loadWithOverviewMode = true
-                        settings.useWideViewPort = true
-                        settings.mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
-                        addJavascriptInterface(youtubeBridge, "AndroidBridge")
-                        webChromeClient = object : WebChromeClient() {
-                            override fun onConsoleMessage(message: ConsoleMessage): Boolean {
-                                android.util.Log.d("CineStreamYouTube", "JS ${message.messageLevel()}: ${message.message()} (${message.sourceId()}:${message.lineNumber()})")
-                                return true
-                            }
-                        }
-                        webViewClient = object : WebViewClient() {
-                            override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
-                                android.util.Log.i("CineStreamYouTube", "WebView loading $url")
-                                youtubePlaybackError = false
-                                youtubePageLoaded = false
-                                youtubePlaybackStarted = false
-                                isBuffering = true
-                            }
-
-                            override fun onReceivedError(
-                                view: WebView?,
-                                request: WebResourceRequest?,
-                                error: WebResourceError?
-                            ) {
-                                android.util.Log.e("CineStreamYouTube", "WebView error ${error?.errorCode}: ${error?.description} for ${request?.url}")
-                                if (request?.isForMainFrame == true) {
-                                    youtubeErrorMessage = "No pude conectar con YouTube. Revisá la conexión o el DNS del teléfono."
-                                    youtubePlaybackError = true
-                                    youtubePageLoaded = false
-                                    isBuffering = false
-                                }
-                            }
-                        }
-                        youtubeWebView = this
-                        tag = movie.streamUrl
-                        loadDataWithBaseURL("https://www.youtube.com/", youtubeHtml, "text/html", "UTF-8", null)
-                    }
-                },
-                update = { view ->
-                    youtubeWebView = view
-                    if (view.tag as? String != movie.streamUrl) {
-                        youtubePlaybackError = false
-                        youtubePageLoaded = false
-                        youtubePlaybackStarted = false
-                        view.tag = movie.streamUrl
-                        view.loadDataWithBaseURL("https://www.youtube.com/", youtubeHtml, "text/html", "UTF-8", null)
-                    }
-                },
-                modifier = Modifier.fillMaxSize().testTag(
-                    when {
-                        youtubePlaybackStarted -> "youtube_player_playing"
-                        youtubePlaybackError -> "youtube_player_error_state"
-                        youtubePageLoaded -> "youtube_player_ready"
-                        else -> "youtube_player_loading"
-                    }
-                )
-            )
-            DisposableEffect(movie.streamUrl) {
-                onDispose {
-                    youtubeWebView?.stopLoading()
-                    youtubeWebView?.destroy()
-                    youtubeWebView = null
+        // Todos los videos, incluidos los de YouTube, se reproducen dentro de CineStream con Media3.
+        AndroidView(
+            factory = { ctx ->
+                PlayerView(ctx).apply {
+                    player = exoPlayer
+                    useController = false
+                    resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
+                    keepScreenOn = true
+                    layoutParams = FrameLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.MATCH_PARENT
+                    )
                 }
-            }
-        } else {
-            AndroidView(
-                factory = { ctx ->
-                    PlayerView(ctx).apply {
-                        player = exoPlayer
-                        useController = false // Usamos nuestros controles modernos en Jetpack Compose
-                        resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
-                        keepScreenOn = true
-                        layoutParams = FrameLayout.LayoutParams(
-                            ViewGroup.LayoutParams.MATCH_PARENT,
-                            ViewGroup.LayoutParams.MATCH_PARENT
-                        )
-                    }
-                },
-                update = { view ->
-                    if (view.player != exoPlayer) {
-                        view.player = exoPlayer
-                    }
-                },
-                modifier = Modifier.fillMaxSize()
+            },
+            update = { view -> if (view.player !== exoPlayer) view.player = exoPlayer },
+            modifier = Modifier.fillMaxSize().testTag(
+                when {
+                    isYouTubeEmbed && youtubePlaybackStarted -> "youtube_player_playing"
+                    isYouTubeEmbed && youtubePlaybackError -> "youtube_player_error_state"
+                    isYouTubeEmbed && youtubePageLoaded -> "youtube_player_ready"
+                    isYouTubeEmbed -> "youtube_player_loading"
+                    else -> "media3_player_view"
+                }
             )
-        }
+        )
 
         // Overlay de Controles Modernos
         AnimatedVisibility(
-            visible = if (isYouTubeEmbed) youtubePlaybackError else showControls || isBuffering || playbackError != null,
+            visible = showControls || isBuffering || playbackError != null || youtubePlaybackError,
             enter = fadeIn(),
             exit = fadeOut(),
             modifier = Modifier.fillMaxSize()
@@ -423,7 +343,11 @@ fun PlayerScreen(
                                     modifier = Modifier.padding(end = 6.dp)
                                 ) {
                                     Text(
-                                        text = if (isYouTubeEmbed) "YOUTUBE" else "EN LÍNEA",
+                                        text = if (isYouTubeEmbed) {
+                                            if (!youtubePlaybackStarted) "BUSCANDO ESPAÑOL"
+                                            else if (resolvedYouTube?.hasSpanishAudio == true) "AUDIO ESPAÑOL"
+                                            else "SUBTÍTULOS ESPAÑOL"
+                                        } else "EN LÍNEA",
                                         fontSize = 9.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = Color.White,
@@ -431,7 +355,11 @@ fun PlayerScreen(
                                     )
                                 }
                                 Text(
-                                    text = if (isYouTubeEmbed) "Reproductor oficial de YouTube" else "Reproducción de video",
+                                    text = if (isYouTubeEmbed) {
+                                        if (resolvedYouTube?.hasSpanishAudio == true) "Audio en español · CineStream"
+                                        else if (youtubePlaybackStarted) "Audio original con subtítulos en español"
+                                        else "Buscando audio o subtítulos en español"
+                                    } else "Reproducción de video",
                                     fontSize = 11.sp,
                                     color = TextSecondary
                                 )
@@ -444,9 +372,6 @@ fun PlayerScreen(
                         onClick = {
                             isMuted = !isMuted
                             exoPlayer?.volume = if (isMuted) 0f else 1f
-                            if (isYouTubeEmbed) {
-                                youtubeWebView?.evaluateJavascript(if (isMuted) "player.mute()" else "player.unMute()", null)
-                            }
                         }
                     ) {
                         Icon(
@@ -458,7 +383,7 @@ fun PlayerScreen(
                 }
 
                 // Controles Centrales (Rebobinar 10s, Play/Pausa/Buffering, Adelantar 10s)
-                if (!isYouTubeEmbed) {
+                if (true) {
                     Row(
                         modifier = Modifier.align(Alignment.Center),
                         horizontalArrangement = Arrangement.spacedBy(28.dp),
@@ -559,13 +484,11 @@ fun PlayerScreen(
                                     youtubePlaybackError = false
                                     youtubePageLoaded = false
                                     youtubePlaybackStarted = false
-                                    youtubeWebView?.reload()
+                                    resolvedYouTube = null
+                                    youtubeRetryNonce++
                                 },
                                 colors = ButtonDefaults.buttonColors(containerColor = NetflixRed)
                             ) { Text("Reintentar") }
-                            TextButton(onClick = {
-                                runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(movie.sourceUrl))) }
-                            }) { Text("Probar en YouTube", color = Color.White) }
                         }
                     }
                 }
@@ -591,31 +514,36 @@ fun PlayerScreen(
                                 onClick = {
                                     playbackError = null
                                     isBuffering = true
-                                    val dataSourceFactory = if (movie.isLive) {
-                                        MediaCacheManager.createLiveDataSourceFactory(context)
+                                    if (isYouTubeEmbed) {
+                                        resolvedYouTube = null
+                                        youtubePlaybackError = false
+                                        youtubeRetryNonce++
                                     } else {
-                                        MediaCacheManager.createCacheDataSourceFactory(context)
-                                    }
-                                    val mediaItem = MediaItem.Builder()
-                                        .setUri(Uri.parse(movie.streamUrl))
-                                        .apply {
-                                            if (movie.isLive || movie.streamUrl.contains(".m3u8")) {
-                                                setMimeType(androidx.media3.common.MimeTypes.APPLICATION_M3U8)
-                                            }
+                                        val dataSourceFactory = if (movie.isLive) {
+                                            MediaCacheManager.createLiveDataSourceFactory(context)
+                                        } else {
+                                            MediaCacheManager.createCacheDataSourceFactory(context)
                                         }
-                                        .build()
-
-                                    val mediaSource = if (movie.isLive || movie.streamUrl.contains(".m3u8")) {
-                                        androidx.media3.exoplayer.hls.HlsMediaSource.Factory(dataSourceFactory)
-                                            .setAllowChunklessPreparation(true)
-                                            .createMediaSource(mediaItem)
-                                    } else {
-                                        androidx.media3.exoplayer.source.ProgressiveMediaSource.Factory(dataSourceFactory)
-                                            .createMediaSource(mediaItem)
+                                        val mediaItem = MediaItem.Builder()
+                                            .setUri(Uri.parse(movie.streamUrl))
+                                            .apply {
+                                                if (movie.isLive || movie.streamUrl.contains(".m3u8")) {
+                                                    setMimeType(androidx.media3.common.MimeTypes.APPLICATION_M3U8)
+                                                }
+                                            }
+                                            .build()
+                                        val mediaSource = if (movie.isLive || movie.streamUrl.contains(".m3u8")) {
+                                            androidx.media3.exoplayer.hls.HlsMediaSource.Factory(dataSourceFactory)
+                                                .setAllowChunklessPreparation(true)
+                                                .createMediaSource(mediaItem)
+                                        } else {
+                                            androidx.media3.exoplayer.source.ProgressiveMediaSource.Factory(dataSourceFactory)
+                                                .createMediaSource(mediaItem)
+                                        }
+                                        exoPlayer?.setMediaSource(mediaSource)
+                                        exoPlayer?.prepare()
+                                        exoPlayer?.play()
                                     }
-                                    exoPlayer?.setMediaSource(mediaSource)
-                                    exoPlayer?.prepare()
-                                    exoPlayer?.play()
                                 },
                                 colors = ButtonDefaults.buttonColors(containerColor = NetflixRed)
                             ) {
@@ -625,8 +553,8 @@ fun PlayerScreen(
                     }
                 }
 
-                // Barra Inferior de Control de Progreso y Tiempo (oculta en streaming de YouTube Webview)
-                if (!isYouTubeEmbed) {
+                // Barra inferior de progreso y tiempo para los videos reproducidos con Media3
+                if (true) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -696,7 +624,7 @@ fun PlayerScreen(
                                     shape = RoundedCornerShape(4.dp)
                                 ) {
                                     Text(
-                                        text = movie.quality,
+                                        text = if (isYouTubeEmbed && resolvedYouTube != null) "${resolvedYouTube!!.videoHeight}p" else movie.quality,
                                         fontSize = 11.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = BadgeTeal,
