@@ -11,6 +11,11 @@ assert "durationSeconds < 45 * 60" not in search_source, "Do not impose an arbit
 assert "fullLengthPattern.containsMatchIn(text)" in search_source and "spanishPattern.containsMatchIn(text)" in search_source
 assert "rejectPattern.containsMatchIn(title)" in search_source, "Reject trailers, clips, shorts and episodes"
 assert "YouTubeSearchCatalog().searchMovies()" in catalog_source, "The catalog must use the extractor engine"
+viewmodel = (root / "app/src/main/java/com/example/ui/viewmodel/CineStreamViewModel.kt").read_text(encoding="utf-8")
+home_screen = (root / "app/src/main/java/com/example/ui/screens/HomeScreen.kt").read_text(encoding="utf-8")
+assert "val totalMovieCount: Int = 0" in viewmodel, "Expose a total count in UI state"
+assert "repository.getMovies()" in viewmodel and "totalMovieCount = totalMovieCount" in viewmodel, "Count the complete loaded catalog, not the current filter"
+assert 'text = "Catálogo: ${uiState.totalMovieCount} películas"' in home_screen and 'testTag("catalog_movie_count")' in home_screen, "Show the current total visibly in the app header"
 assert "parseFeed" not in catalog_source and "feeds/videos.xml" not in catalog_source, "Do not inflate the catalog with undurationed RSS candidates"
 assert "loadBundled()" in catalog_source
 
